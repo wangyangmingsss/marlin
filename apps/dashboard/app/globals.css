@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #0066FF;
+    --primary-hover: #0052CC;
+    --primary-foreground: #FFFFFF;
+    --background: #0A1628;
+    --foreground: #F5F7FA;
+    --border: #1A2942;
+    --card: #0F1B2E;
+    --card-foreground: #F5F7FA;
+    --muted: #1A2942;
+    --muted-foreground: #94A3B8;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --input: #1A2942;
+    --ring: #0066FF;
+    --radius: 0.5rem;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-400;
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border rounded-lg;
+  }
+
+  .input-base {
+    @apply w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground
+      placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring
+      focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2
+      text-sm font-medium text-primary-foreground hover:bg-primary-hover
+      focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+      focus:ring-offset-background disabled:pointer-events-none disabled:opacity-50
+      transition-colors;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-border
+      bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-muted
+      focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+      focus:ring-offset-background disabled:pointer-events-none disabled:opacity-50
+      transition-colors;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg bg-danger px-4 py-2
+      text-sm font-medium text-white hover:bg-danger/90
+      focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2
+      focus:ring-offset-background disabled:pointer-events-none disabled:opacity-50
+      transition-colors;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2
+      text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted
+      focus:outline-none focus:ring-2 focus:ring-ring
+      disabled:pointer-events-none disabled:opacity-50 transition-colors;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Wallet adapter overrides */
+.wallet-adapter-button {
+  background-color: var(--primary) !important;
+  border-radius: var(--radius) !important;
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+}

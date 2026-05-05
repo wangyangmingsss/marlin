@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────
+
+enum InvoiceStatus {
+  Open
+  Paid
+  Expired
+  Cancelled
+}
+
+enum SubscriptionStatus {
+  Active
+  PastDue
+  Cancelled
+  Completed
+}
+
+enum ChargeStatus {
+  Pending
+  Confirmed
+  Failed
+}
+
+// ─── Models ──────────────────────────────────────────────────────────
+
+model Merchant {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique @map("wallet_address")
+  label         String?
+  webhookUrl    String?  @map("webhook_url")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  invoices          Invoice[]
+  subscriptionPlans SubscriptionPlan[]
+  apiKeys           ApiKey[]
+  customers         Customer[]
+
+  @@map("merchants")
+}
+
+model Customer {
+  id            String   @id @default(cuid())
+  walletAddress String   @map("wallet_address")
+  merchantId    String   @map("merchant_id")
+  email         String?
+  label         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
+  invoices      Invoice[]
+  subscriptions Subscription[]
+
+  @@unique([walletAddress, merchantId])
+  @@map("customers")
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  onchainId       String        @unique @map("onchain_id")
+  merchantId      String        @map("merchant_id")
+  customerId      String?       @map("customer_id")
+  mint            String
+  amount          BigInt
+  status          InvoiceStatus @default(Open)
+  memo            String?
+  paidTxSignature String?       @map("paid_tx_signature")
+  paidAt          DateTime?     @map("paid_at")
+  expiresAt       DateTime?     @map("expires_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  merchant Merchant       @relation(fields: [merchantId], references: [id])
+  customer Customer?      @relation(fields: [customerId], references: [id])
+  views    InvoiceView[]
+
+  @@index([merchantId, status])
+  @@index([status, expiresAt])
+  @@map("invoices")
+}
+
+model InvoiceView {
+  id        String   @id @default(cuid())
+  invoiceId String   @map("invoice_id")
+  viewerIp  String?  @map("viewer_ip")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_views")
+}
+
+model SubscriptionPlan {
+  id             String   @id @default(cuid())
+  onchainId      String   @unique @map("onchain_id")
+  merchantId     String   @map("merchant_id")
+  mint           String
+  amount         BigInt
+  intervalSeconds Int     @map("interval_seconds")
+  label          String?
+  description    String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
+  subscriptions Subscription[]
+
+  @@index([merchantId, active])
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id              String             @id @default(cuid())
+  onchainId       String             @unique @map("onchain_id")
+  planId          String             @map("plan_id")
+  customerId      String             @map("customer_id")
+  status          SubscriptionStatus @default(Active)
+  currentPeriodStart DateTime        @map("current_period_start")
+  currentPeriodEnd   DateTime        @map("current_period_end")
+  cancelledAt     DateTime?          @map("cancelled_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  customer Customer         @relation(fields: [customerId], references: [id])
+  charges  Charge[]
+
+  @@unique([planId, customerId])
+  @@map("subscriptions")
+}
+
+model Charge {
+  id             String       @id @default(cuid())
+  subscriptionId String       @map("subscription_id")
+  amount         BigInt
+  status         ChargeStatus @default(Pending)
+  txSignature    String?      @map("tx_signature")
+  periodStart    DateTime     @map("period_start")
+  periodEnd      DateTime     @map("period_end")
+  attemptedAt    DateTime?    @map("attempted_at")
+  confirmedAt    DateTime?    @map("confirmed_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@index([subscriptionId, status])
+  @@map("charges")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  merchantId String    @map("merchant_id")
+  keyHash    String    @unique @map("key_hash")
+  label      String?
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId])
+  @@map("api_keys")
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  merchantId  String   @map("merchant_id")
+  eventType   String   @map("event_type")
+  payload     Json
+  httpStatus  Int?     @map("http_status")
+  attempts    Int      @default(0)
+  lastError   String?  @map("last_error")
+  deliveredAt DateTime? @map("delivered_at")
+  nextRetryAt DateTime? @map("next_retry_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([merchantId, createdAt])
+  @@index([nextRetryAt])
+  @@map("webhook_deliveries")
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  nonce     String   @unique
+  wallet    String
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([wallet])
+  @@index([expiresAt])
+  @@map("auth_nonces")
+}
+
+model IndexerCheckpoint {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  slot      BigInt
+  signature String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("indexer_checkpoints")
+}
+
+model ProcessedTx {
+  signature   String   @id
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_txs")
+}
