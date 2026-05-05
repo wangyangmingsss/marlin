@@ -1,0 +1,33 @@
+{
+  "name": "@marlin/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for Marlin — stablecoin billing on Solana",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.mjs", "require": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./react": { "import": "./dist/react/index.mjs", "require": "./dist/react/index.js", "types": "./dist/react/index.d.ts" }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.1.0",
+    "react": "^18.3.0",
+    "@types/react": "^18.3.0",
+    "@types/node": "^20.14.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

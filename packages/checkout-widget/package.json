@@ -1,0 +1,31 @@
+{
+  "name": "@marlin/checkout",
+  "version": "1.0.0",
+  "description": "Embeddable checkout widget for Marlin stablecoin payments",
+  "main": "dist/checkout.js",
+  "module": "dist/checkout.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/checkout.esm.js", "require": "./dist/checkout.js", "types": "./dist/index.d.ts" },
+    "./react": { "import": "./dist/react.esm.js", "require": "./dist/react.js", "types": "./dist/react.d.ts" }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.1.0",
+    "react": "^18.3.0",
+    "@types/react": "^18.3.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}
