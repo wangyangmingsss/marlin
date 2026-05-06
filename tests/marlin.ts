@@ -26,7 +26,7 @@ describe('marlin', () => {
   // Test keypairs
   const merchantAuthority = Keypair.generate()
   const customerWallet = Keypair.generate()
-  const protocolFeeReceiver = new PublicKey('11111111111111111111111111111112')
+  const protocolFeeReceiver = new PublicKey('HpwaQ1H2qqCs8a7ZEeq8s8Hm9qUvJnLvWTc6vXsbRFzT')
 
   // Mint and token accounts
   let mint: PublicKey

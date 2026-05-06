@@ -16,8 +16,8 @@ pub const BPS_DENOMINATOR: u64 = 10_000;
 /// Minimum subscription period in seconds (1 day)
 pub const MIN_PERIOD_SECONDS: u32 = 86_400;
 
-// TODO: Replace with actual protocol fee receiver pubkey before mainnet launch
-pub const PROTOCOL_FEE_RECEIVER: Pubkey = anchor_lang::solana_program::pubkey!("11111111111111111111111111111112");
+// Protocol fee receiver — the wallet that collects 0.5% fees on every payment
+pub const PROTOCOL_FEE_RECEIVER: Pubkey = anchor_lang::solana_program::pubkey!("HpwaQ1H2qqCs8a7ZEeq8s8Hm9qUvJnLvWTc6vXsbRFzT");
 
 /// Returns true if the given mint is in the supported stablecoin allowlist.
 pub fn is_supported_mint(mint: &Pubkey) -> bool {
