@@ -1,0 +1,55 @@
+# Architecture
+
+## System Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Merchant / Customer                      │
+└────────────┬───────────────────┬──────────────────┬─────────┘
+             │                   │                  │
+   ┌─────────▼────────┐ ┌────────▼────────┐ ┌───────▼───────┐
+   │   Dashboard       │ │  Hosted Checkout │ │  Embed Widget │
+   │   (Next.js)       │ │   (Next.js)      │ │  (React/JS)   │
+   └─────────┬────────┘ └────────┬────────┘ └───────┬───────┘
+             │                   │                  │
+             └─────────┬─────────┴──────────────────┘
+                       │
+              ┌────────▼────────┐
+              │   REST API      │
+              │   (Next.js)     │
+              └────────┬────────┘
+                       │
+        ┌──────────────┼──────────────┬──────────────┐
+        │              │              │              │
+┌───────▼──────┐ ┌─────▼─────┐ ┌──────▼─────┐ ┌──────▼──────┐
+│  Postgres    │ │  Indexer  │ │ Webhook Q  │ │ Subs Cron   │
+│  (Supabase)  │ │  (Helius) │ │ (BullMQ)   │ │ (Railway)   │
+└──────────────┘ └─────┬─────┘ └────────────┘ └──────┬──────┘
+                       │                              │
+                ┌──────▼──────────────────────────────▼──────┐
+                │       Solana — Marlin Anchor Program       │
+                └────────────────────────────────────────────┘
+```
+
+## Components
+
+| Component           | Technology              | Location                    |
+|---------------------|-------------------------|-----------------------------|
+| Smart Contract      | Anchor 0.30 / Rust      | `programs/marlin/`          |
+| Dashboard + API     | Next.js 14 (App Router) | `apps/dashboard/`           |
+| Hosted Checkout     | Next.js 14              | `apps/checkout/`            |
+| Indexer             | Node.js / Helius        | `apps/indexer/`             |
+| Shared Types/Utils  | TypeScript              | `packages/shared/`          |
+| Database Client     | Prisma                  | `packages/db/`              |
+| UI Utilities        | React                   | `packages/ui/`              |
+
+## Tech Stack
+
+- **Smart contracts:** Anchor 0.30, Rust, Solana 1.18+
+- **Web apps:** Next.js 14 (App Router), TypeScript, Tailwind, shadcn/ui
+- **Database:** Postgres (Supabase) via Prisma
+- **Queue:** BullMQ on Upstash Redis
+- **RPC + Indexing:** Helius
+- **Hosting:** Vercel (web), Railway (workers + cron)
+- **Email:** Resend
+- **Monorepo:** Turborepo + pnpm
