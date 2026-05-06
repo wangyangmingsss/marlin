@@ -1,0 +1,740 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Marlin API",
+    "description": "Stablecoin billing API for Solana. Invoices, subscriptions, customers, and webhooks.",
+    "version": "1.0.0",
+    "contact": { "name": "Marlin", "url": "https://marlin.fi" },
+    "license": { "name": "MIT", "url": "https://opensource.org/licenses/MIT" }
+  },
+  "servers": [
+    { "url": "https://api.marlin.dev", "description": "Production" },
+    { "url": "http://localhost:3000", "description": "Local development" }
+  ],
+  "security": [{ "BearerAuth": [] }],
+  "tags": [
+    { "name": "Auth", "description": "SIWS authentication" },
+    { "name": "Invoices", "description": "Invoice management" },
+    { "name": "Plans", "description": "Subscription plan management" },
+    { "name": "Subscriptions", "description": "Subscription lifecycle" },
+    { "name": "Customers", "description": "Customer directory" },
+    { "name": "Analytics", "description": "Revenue analytics" },
+    { "name": "Settings", "description": "Webhook and API key management" },
+    { "name": "Public", "description": "Unauthenticated checkout endpoints" }
+  ],
+  "paths": {
+    "/api/auth/nonce": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get SIWS nonce",
+        "description": "Returns a Sign-In With Solana message and nonce for wallet signature.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Nonce generated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NonceResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify signature and issue JWT",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Login successful, JWT set as httpOnly cookie" },
+          "401": { "description": "Invalid signature" }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Clear session",
+        "responses": { "200": { "description": "Session cleared" } }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get current merchant profile",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Merchant" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/invoices": {
+      "get": {
+        "tags": ["Invoices"],
+        "summary": "List invoices",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["Open", "Paid", "Expired", "Cancelled"] } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InvoiceList" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Invoices"],
+        "summary": "Create invoice",
+        "description": "Creates an invoice on-chain and returns the unsigned transaction for the merchant to sign.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateInvoiceInput" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateInvoiceResponse" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/invoices/{id}": {
+      "get": {
+        "tags": ["Invoices"],
+        "summary": "Get invoice by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invoice" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/invoices/{id}/void": {
+      "post": {
+        "tags": ["Invoices"],
+        "summary": "Void an unpaid invoice",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invoice" } } } },
+          "400": { "description": "Invoice is not in Open status" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/invoices/{id}/send": {
+      "post": {
+        "tags": ["Invoices"],
+        "summary": "Send invoice via email",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Email sent", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "sentTo": { "type": "string" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/plans": {
+      "get": {
+        "tags": ["Plans"],
+        "summary": "List subscription plans",
+        "parameters": [
+          { "name": "active", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PlanList" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Plans"],
+        "summary": "Create subscription plan",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePlanInput" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/plans/{id}": {
+      "patch": {
+        "tags": ["Plans"],
+        "summary": "Update plan",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdatePlanInput" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Plan" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/subscriptions": {
+      "get": {
+        "tags": ["Subscriptions"],
+        "summary": "List subscriptions",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["Active", "PastDue", "Cancelled", "Completed"] } },
+          { "name": "planId", "in": "query", "schema": { "type": "string" } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubscriptionList" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/subscriptions/{id}/pause": {
+      "post": {
+        "tags": ["Subscriptions"],
+        "summary": "Pause subscription",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/subscriptions/{id}/resume": {
+      "post": {
+        "tags": ["Subscriptions"],
+        "summary": "Resume subscription",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/subscriptions/{id}/cancel": {
+      "post": {
+        "tags": ["Subscriptions"],
+        "summary": "Cancel subscription",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/subscriptions/{id}/charges": {
+      "get": {
+        "tags": ["Subscriptions"],
+        "summary": "List charges for subscription",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ChargeList" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "tags": ["Customers"],
+        "summary": "List customers",
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerList" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Customers"],
+        "summary": "Create customer",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateCustomerInput" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/api/customers/{id}": {
+      "patch": {
+        "tags": ["Customers"],
+        "summary": "Update customer",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateCustomerInput" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Customer" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/analytics/overview": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Revenue overview",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AnalyticsOverview" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/revenue-timeline": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Revenue over time",
+        "parameters": [{ "name": "range", "in": "query", "schema": { "type": "string", "enum": ["7d", "30d", "90d"], "default": "30d" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RevenueTimeline" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/by-mint": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Revenue breakdown by stablecoin",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ByMintAnalytics" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/analytics/top-customers": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Top customers by revenue",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TopCustomers" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/settings/webhook": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "Get webhook configuration",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WebhookConfig" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["Settings"],
+        "summary": "Update webhook URL",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WebhookConfig" } } } }
+        }
+      }
+    },
+    "/api/settings/api-keys": {
+      "get": {
+        "tags": ["Settings"],
+        "summary": "List API keys",
+        "responses": { "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiKeyList" } } } } }
+      },
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Create API key",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "label": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiKeyCreated" } } } }
+        }
+      }
+    },
+    "/api/settings/api-keys/{id}": {
+      "delete": {
+        "tags": ["Settings"],
+        "summary": "Revoke API key",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Key revoked" } }
+      }
+    },
+    "/api/public/invoice/{token}": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Get invoice details for checkout",
+        "security": [],
+        "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PublicInvoice" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/public/invoice/{token}/build-payment-tx": {
+      "post": {
+        "tags": ["Public"],
+        "summary": "Build payment transaction",
+        "security": [],
+        "parameters": [{ "name": "token", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["payerWallet"], "properties": { "payerWallet": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "transaction": { "type": "string", "description": "Base64-encoded unsigned transaction" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/public/plan/{slug}": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Get plan details for subscription checkout",
+        "security": [],
+        "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PublicPlan" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/public/plan/{slug}/build-subscribe-tx": {
+      "post": {
+        "tags": ["Public"],
+        "summary": "Build subscribe transaction",
+        "security": [],
+        "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["customerWallet", "maxAuthorized"], "properties": { "customerWallet": { "type": "string" }, "maxAuthorized": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "transaction": { "type": "string" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": ["Public"],
+        "summary": "Health check",
+        "security": [],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "example": "ok" } } } } } }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "Authorization", "description": "Bearer mk_live_..." }
+    },
+    "responses": {
+      "Unauthorized": { "description": "Authentication required", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "Resource not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ValidationError": { "description": "Invalid input", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "details": { "type": "object" }
+            }
+          }
+        }
+      },
+      "Merchant": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "label": { "type": "string", "nullable": true },
+          "webhookUrl": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "onchainId": { "type": "string" },
+          "merchantId": { "type": "string" },
+          "customerId": { "type": "string", "nullable": true },
+          "mint": { "type": "string" },
+          "amount": { "type": "string", "description": "BigInt as string" },
+          "status": { "type": "string", "enum": ["Open", "Paid", "Expired", "Cancelled"] },
+          "memo": { "type": "string", "nullable": true },
+          "paidTxSignature": { "type": "string", "nullable": true },
+          "paidAt": { "type": "string", "format": "date-time", "nullable": true },
+          "expiresAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "InvoiceList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Invoice" } },
+          "has_more": { "type": "boolean" },
+          "cursor": { "type": "string", "nullable": true }
+        }
+      },
+      "CreateInvoiceInput": {
+        "type": "object",
+        "required": ["amount", "mint"],
+        "properties": {
+          "amount": { "type": "string", "description": "Amount in smallest unit (e.g. 100000000 = 100 USDC)" },
+          "mint": { "type": "string", "description": "SPL token mint address or symbol (USDC, PYUSD, USDG)" },
+          "customerWallet": { "type": "string", "description": "Restrict payment to this wallet" },
+          "memo": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateInvoiceResponse": {
+        "type": "object",
+        "properties": {
+          "invoice": { "$ref": "#/components/schemas/Invoice" },
+          "transaction": { "type": "string", "description": "Base64-encoded unsigned transaction" }
+        }
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "onchainId": { "type": "string" },
+          "merchantId": { "type": "string" },
+          "mint": { "type": "string" },
+          "amount": { "type": "string" },
+          "intervalSeconds": { "type": "integer" },
+          "label": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "active": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PlanList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Plan" } },
+          "has_more": { "type": "boolean" },
+          "cursor": { "type": "string", "nullable": true }
+        }
+      },
+      "CreatePlanInput": {
+        "type": "object",
+        "required": ["amount", "mint", "intervalSeconds"],
+        "properties": {
+          "amount": { "type": "string" },
+          "mint": { "type": "string" },
+          "intervalSeconds": { "type": "integer", "minimum": 86400 },
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "trialSeconds": { "type": "integer", "default": 0 }
+        }
+      },
+      "UpdatePlanInput": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "onchainId": { "type": "string" },
+          "planId": { "type": "string" },
+          "customerId": { "type": "string" },
+          "status": { "type": "string", "enum": ["Active", "PastDue", "Cancelled", "Completed"] },
+          "currentPeriodStart": { "type": "string", "format": "date-time" },
+          "currentPeriodEnd": { "type": "string", "format": "date-time" },
+          "cancelledAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SubscriptionList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Subscription" } },
+          "has_more": { "type": "boolean" },
+          "cursor": { "type": "string", "nullable": true }
+        }
+      },
+      "Charge": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "subscriptionId": { "type": "string" },
+          "amount": { "type": "string" },
+          "status": { "type": "string", "enum": ["Pending", "Confirmed", "Failed"] },
+          "txSignature": { "type": "string", "nullable": true },
+          "periodStart": { "type": "string", "format": "date-time" },
+          "periodEnd": { "type": "string", "format": "date-time" },
+          "confirmedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ChargeList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Charge" } }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "walletAddress": { "type": "string" },
+          "merchantId": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "label": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CustomerList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Customer" } },
+          "has_more": { "type": "boolean" },
+          "cursor": { "type": "string", "nullable": true }
+        }
+      },
+      "CreateCustomerInput": {
+        "type": "object",
+        "required": ["walletAddress"],
+        "properties": {
+          "walletAddress": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "label": { "type": "string" }
+        }
+      },
+      "UpdateCustomerInput": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "label": { "type": "string" }
+        }
+      },
+      "AnalyticsOverview": {
+        "type": "object",
+        "properties": {
+          "mrr": { "type": "number" },
+          "totalRevenue": { "type": "number" },
+          "activeSubscriptions": { "type": "integer" },
+          "openInvoices": { "type": "integer" },
+          "mrrTrend": { "type": "number" },
+          "revenueTrend": { "type": "number" },
+          "revenueChart": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "revenue": { "type": "number" } } } }
+        }
+      },
+      "RevenueTimeline": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "properties": { "date": { "type": "string" }, "amount": { "type": "string" } } } }
+        }
+      },
+      "ByMintAnalytics": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "properties": { "mint": { "type": "string" }, "total": { "type": "string" }, "count": { "type": "integer" } } } }
+        }
+      },
+      "TopCustomers": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "properties": { "customer": { "$ref": "#/components/schemas/Customer" }, "totalSpent": { "type": "string" }, "invoiceCount": { "type": "integer" }, "subscriptionCount": { "type": "integer" } } } }
+        }
+      },
+      "WebhookConfig": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "nullable": true },
+          "secret": { "type": "string", "description": "Only returned on creation/rotation" }
+        }
+      },
+      "ApiKeyList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "label": { "type": "string", "nullable": true }, "lastUsedAt": { "type": "string", "format": "date-time", "nullable": true }, "createdAt": { "type": "string", "format": "date-time" } } } }
+        }
+      },
+      "ApiKeyCreated": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "key": { "type": "string", "description": "Full API key — only shown once" },
+          "label": { "type": "string", "nullable": true }
+        }
+      },
+      "PublicInvoice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "merchantLabel": { "type": "string" },
+          "merchantWallet": { "type": "string" },
+          "amount": { "type": "string" },
+          "mint": { "type": "string" },
+          "status": { "type": "string" },
+          "memo": { "type": "string", "nullable": true },
+          "expiresAt": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "PublicPlan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "merchantLabel": { "type": "string" },
+          "label": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "amount": { "type": "string" },
+          "mint": { "type": "string" },
+          "intervalSeconds": { "type": "integer" },
+          "trialSeconds": { "type": "integer" }
+        }
+      },
+      "NonceResponse": {
+        "type": "object",
+        "properties": {
+          "nonce": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["signature", "publicKey"],
+        "properties": {
+          "signature": { "type": "string" },
+          "publicKey": { "type": "string" }
+        }
+      },
+      "WebhookEvent": {
+        "type": "object",
+        "description": "Webhook payload delivered to merchant endpoint",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["invoice.paid", "invoice.voided", "subscription.created", "subscription.charged", "subscription.failed", "subscription.status_changed"] },
+          "data": { "type": "object" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

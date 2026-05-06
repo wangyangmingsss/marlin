@@ -1,5 +1,21 @@
-import { prisma } from '@marlin/db'
-import { ulid } from 'ulid'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+function ulid(): string {
+  const ENCODING = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+  const time = Date.now()
+  let str = ''
+  let t = time
+  for (let i = 9; i >= 0; i--) {
+    str = ENCODING[t % 32] + str
+    t = Math.floor(t / 32)
+  }
+  for (let i = 0; i < 16; i++) {
+    str += ENCODING[Math.floor(Math.random() * 32)]
+  }
+  return str
+}
 
 async function main() {
   console.log('Seeding database...')
@@ -9,21 +25,21 @@ async function main() {
   const merchant = await prisma.merchant.create({
     data: {
       id: merchantId,
-      name: 'Acme Coffee Shop',
-      email: 'owner@acmecoffee.com',
       walletAddress: '7XSY4Mq5r9Gf8Kp2VbNcAeDhWJ6nRtU3ZxPmLs1wQoB',
+      label: 'Acme Coffee Shop',
+      webhookUrl: null,
     },
   })
-  console.log(`Created merchant: ${merchant.name}`)
+  console.log(`Created merchant: ${merchant.label}`)
 
   // --- Customers ---
   const customerData = [
-    { name: 'Alice Johnson', email: 'alice@example.com', walletAddress: '3Fk8rPQ7vXm2Yz9LsNdWcJeH4gTpU6aBx1Ro5iKwMnE' },
-    { name: 'Bob Martinez', email: 'bob.martinez@gmail.com', walletAddress: '9Hn4tLm6jKp3Qr8WxCvBdAeS5fG7iYoU2Zl1RwXaNbE' },
-    { name: 'Carol Wei', email: 'carol.wei@company.co', walletAddress: 'BpR7mK3nF9xL2Qe4JcWvY6sHdA8tG1iZoU5wXaN0bEf' },
-    { name: 'David Okafor', email: 'david.ok@protonmail.com', walletAddress: '5Gn2rLk8mP4Qx9WtCvBjAeH7fS3iYoU6Zl1RwXaN0bD' },
-    { name: 'Elena Petrov', email: 'elena.p@startup.io', walletAddress: 'Ht6mK3nF9xL2Qe4JcWvY8sRdA7tG1iZoU5wXaN0bEfP' },
-    { name: 'Frank Tanaka', email: 'frank.tanaka@email.jp', walletAddress: '2Jk9pLm6nR4Qx8WtCvBdAeH5fS3iYoU7Zl1GwXaN0bE' },
+    { label: 'Alice Johnson', email: 'alice@example.com', walletAddress: '3Fk8rPQ7vXm2Yz9LsNdWcJeH4gTpU6aBx1Ro5iKwMnE' },
+    { label: 'Bob Martinez', email: 'bob.martinez@gmail.com', walletAddress: '9Hn4tLm6jKp3Qr8WxCvBdAeS5fG7iYoU2Zl1RwXaNbE' },
+    { label: 'Carol Wei', email: 'carol.wei@company.co', walletAddress: 'BpR7mK3nF9xL2Qe4JcWvY6sHdA8tG1iZoU5wXaN0bEf' },
+    { label: 'David Okafor', email: 'david.ok@protonmail.com', walletAddress: '5Gn2rLk8mP4Qx9WtCvBjAeH7fS3iYoU6Zl1RwXaN0bD' },
+    { label: 'Elena Petrov', email: 'elena.p@startup.io', walletAddress: 'Ht6mK3nF9xL2Qe4JcWvY8sRdA7tG1iZoU5wXaN0bEfP' },
+    { label: 'Frank Tanaka', email: 'frank.tanaka@email.jp', walletAddress: '2Jk9pLm6nR4Qx8WtCvBdAeH5fS3iYoU7Zl1GwXaN0bE' },
   ]
 
   const customers = await Promise.all(
@@ -32,7 +48,7 @@ async function main() {
         data: {
           id: ulid(),
           merchantId,
-          name: c.name,
+          label: c.label,
           email: c.email,
           walletAddress: c.walletAddress,
         },
@@ -48,30 +64,31 @@ async function main() {
 
   const invoiceData = [
     // 5 paid
-    { customerId: customers[0].id, amount: 4500, currency: 'USDC', status: 'paid', dueDate: daysAgo(10), paidAt: daysAgo(12), memo: 'Cold brew subscription - January' },
-    { customerId: customers[1].id, amount: 1250, currency: 'USDC', status: 'paid', dueDate: daysAgo(8), paidAt: daysAgo(9), memo: 'Catering order #1042' },
-    { customerId: customers[2].id, amount: 8900, currency: 'USDC', status: 'paid', dueDate: daysAgo(5), paidAt: daysAgo(6), memo: 'Office coffee supply Q1' },
-    { customerId: customers[3].id, amount: 3200, currency: 'USDT', status: 'paid', dueDate: daysAgo(3), paidAt: daysAgo(4), memo: 'Event catering deposit' },
-    { customerId: customers[0].id, amount: 4500, currency: 'USDC', status: 'paid', dueDate: daysAgo(1), paidAt: daysAgo(1), memo: 'Cold brew subscription - February' },
+    { customerId: customers[0].id, amount: 4_500_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Paid' as const, expiresAt: daysAgo(10), paidAt: daysAgo(12), memo: 'Cold brew subscription - January' },
+    { customerId: customers[1].id, amount: 1_250_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Paid' as const, expiresAt: daysAgo(8), paidAt: daysAgo(9), memo: 'Catering order #1042' },
+    { customerId: customers[2].id, amount: 8_900_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Paid' as const, expiresAt: daysAgo(5), paidAt: daysAgo(6), memo: 'Office coffee supply Q1' },
+    { customerId: customers[3].id, amount: 3_200_000_000n, mint: 'CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM', status: 'Paid' as const, expiresAt: daysAgo(3), paidAt: daysAgo(4), memo: 'Event catering deposit' },
+    { customerId: customers[0].id, amount: 4_500_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Paid' as const, expiresAt: daysAgo(1), paidAt: daysAgo(1), memo: 'Cold brew subscription - February' },
     // 3 open
-    { customerId: customers[4].id, amount: 6700, currency: 'USDC', status: 'open', dueDate: daysFromNow(14), paidAt: null, memo: 'Bulk beans order - 50 lbs' },
-    { customerId: customers[5].id, amount: 2100, currency: 'USDC', status: 'open', dueDate: daysFromNow(7), paidAt: null, memo: 'Weekly office delivery' },
-    { customerId: customers[1].id, amount: 15000, currency: 'USDT', status: 'open', dueDate: daysFromNow(30), paidAt: null, memo: 'Annual partnership fee' },
+    { customerId: customers[4].id, amount: 6_700_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Open' as const, expiresAt: daysFromNow(14), paidAt: null, memo: 'Bulk beans order - 50 lbs' },
+    { customerId: customers[5].id, amount: 2_100_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Open' as const, expiresAt: daysFromNow(7), paidAt: null, memo: 'Weekly office delivery' },
+    { customerId: customers[1].id, amount: 15_000_000_000n, mint: 'CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM', status: 'Open' as const, expiresAt: daysFromNow(30), paidAt: null, memo: 'Annual partnership fee' },
     // 1 expired
-    { customerId: customers[3].id, amount: 980, currency: 'USDC', status: 'expired', dueDate: daysAgo(15), paidAt: null, memo: 'Sample tasting kit' },
+    { customerId: customers[3].id, amount: 980_000_000n, mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', status: 'Expired' as const, expiresAt: daysAgo(15), paidAt: null, memo: 'Sample tasting kit' },
   ]
 
   const invoices = await Promise.all(
-    invoiceData.map((inv) =>
+    invoiceData.map((inv, i) =>
       prisma.invoice.create({
         data: {
           id: ulid(),
+          onchainId: `inv_${ulid()}`,
           merchantId,
           customerId: inv.customerId,
           amount: inv.amount,
-          currency: inv.currency,
+          mint: inv.mint,
           status: inv.status,
-          dueDate: inv.dueDate,
+          expiresAt: inv.expiresAt,
           paidAt: inv.paidAt,
           memo: inv.memo,
         },
@@ -82,17 +99,20 @@ async function main() {
 
   // --- Subscription Plan ---
   const planId = ulid()
-  const plan = await prisma.plan.create({
+  const plan = await prisma.subscriptionPlan.create({
     data: {
       id: planId,
+      onchainId: `plan_${ulid()}`,
       merchantId,
-      name: 'Pro',
-      amount: 2900,
-      currency: 'USDC',
-      interval: 'month',
+      label: 'Pro',
+      description: 'Pro plan with unlimited access',
+      amount: 29_000_000n, // 29 USDC
+      mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+      intervalSeconds: 2_592_000, // 30 days
+      active: true,
     },
   })
-  console.log(`Created plan: ${plan.name} ($29/mo)`)
+  console.log(`Created plan: ${plan.label} ($29/mo)`)
 
   // --- Subscriptions ---
   const subscriptions = await Promise.all(
@@ -100,10 +120,10 @@ async function main() {
       prisma.subscription.create({
         data: {
           id: ulid(),
-          merchantId,
-          customerId: customer.id,
+          onchainId: `sub_${ulid()}`,
           planId,
-          status: 'active',
+          customerId: customer.id,
+          status: 'Active',
           currentPeriodStart: daysAgo(5),
           currentPeriodEnd: daysFromNow(25),
         },
