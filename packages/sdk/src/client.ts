@@ -3,6 +3,7 @@ import { InvoiceResource } from "./resources/invoices";
 import { PlanResource } from "./resources/plans";
 import { SubscriptionResource } from "./resources/subscriptions";
 import { CustomerResource } from "./resources/customers";
+import { SDK_VERSION } from "./version";
 import type { MarlinConfig, RateLimit } from "./types";
 
 const DEFAULT_BASE_URL = "https://api.marlin.dev";
@@ -63,7 +64,7 @@ export class Marlin {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "@marlinfi/sdk/1.0.0",
+      "User-Agent": `@marlinfi/sdk/${SDK_VERSION}`,
     };
 
     let lastError: Error | null = null;
