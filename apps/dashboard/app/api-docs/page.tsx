@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import Head from 'next/head'
 
+/**
+ * Marlin API Documentation page.
+ * Renders an interactive Swagger UI for the Marlin stablecoin billing API.
+ */
 export default function ApiDocsPage() {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -67,7 +72,11 @@ export default function ApiDocsPage() {
         >
           Marlin
         </a>
-        <span style={{ color: '#888' }}>API Documentation</span>
+        <span style={{ color: '#888' }}>|</span>
+        <span style={{ fontWeight: 500 }}>Marlin API Documentation</span>
+        <span style={{ fontSize: 13, color: '#666' }}>
+          Stablecoin billing &amp; subscription management
+        </span>
         <span style={{ marginLeft: 'auto', fontSize: 13, color: '#888' }}>
           OpenAPI 3.1 &middot; Live on devnet
         </span>
