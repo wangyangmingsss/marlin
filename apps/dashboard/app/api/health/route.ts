@@ -5,5 +5,6 @@ export async function GET() {
     status: 'ok',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
+    cluster: process.env.SOLANA_CLUSTER || 'devnet',
   })
 }
