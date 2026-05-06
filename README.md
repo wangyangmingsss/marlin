@@ -108,19 +108,27 @@ marlin/
 │   │   ├── errors.rs          # Custom error codes
 │   │   ├── state/             # Account structs (Merchant, Invoice, Plan, Subscription)
 │   │   └── instructions/      # All instruction handlers
+├── tests/                     # Anchor program integration tests
 ├── apps/
-│   └── dashboard/             # Merchant dashboard + API routes (Next.js 14)
-│       ├── app/
-│       │   ├── (marketing)/   # Landing page
-│       │   ├── (auth)/        # Connect wallet + onboarding
-│       │   ├── (dashboard)/   # Authenticated dashboard pages
-│       │   └── api/           # REST API endpoints
-│       ├── components/        # React components
-│       └── lib/               # Auth, schemas, Solana helpers
+│   ├── dashboard/             # Merchant dashboard + API routes (Next.js 14)
+│   │   ├── app/
+│   │   │   ├── (marketing)/   # Landing page
+│   │   │   ├── (auth)/        # Connect wallet + onboarding
+│   │   │   ├── (dashboard)/   # Authenticated dashboard pages
+│   │   │   └── api/           # REST API endpoints
+│   │   ├── components/        # React components
+│   │   └── lib/               # Auth, schemas, Solana helpers
+│   ├── checkout/              # Hosted checkout (Next.js) — invoice & subscription flows
+│   ├── indexer/               # On-chain event indexer (Helius + polling) + webhook delivery
+│   └── cron/                  # Subscription auto-charger worker
 ├── packages/
 │   ├── shared/                # @marlin/shared — types, PDA derivation, amount utils
 │   ├── db/                    # @marlin/db — Prisma schema + client
-│   └── ui/                    # @marlin/ui — shared UI utilities
+│   ├── ui/                    # @marlin/ui — shared UI utilities
+│   ├── sdk/                   # @marlin/sdk — TypeScript SDK (server + React)
+│   └── checkout-widget/       # @marlin/checkout-widget — embeddable iframe widget
+├── e2e/                       # Playwright E2E tests
+├── scripts/                   # Seed data + smoke tests
 └── docs/                      # Internal architecture specs
 ```
 
@@ -248,14 +256,39 @@ pnpm dev
 - [x] Auth system (SIWS + JWT)
 - [x] Landing page
 - [x] All REST API routes
+- [x] Hosted Checkout app — invoice & subscription pay-by-link pages
+- [x] Indexer service — Helius webhook + polling fallback + event handlers
+- [x] SDK package (@marlin/sdk) — full client, resources, webhook verification, React integration
+- [x] Embeddable checkout widget — iframe + postMessage, React & vanilla JS
+- [x] Auto-charger cron worker — permissionless subscription charge processing
+- [x] Analytics dashboard — revenue charts, MRR, top customers, by-mint breakdown
+- [x] E2E tests (Playwright) — API, dashboard, checkout flows
+- [x] Unit tests — shared packages (amount, PDA, validation, ULID, mints, errors)
+- [x] SDK tests — client instantiation, webhook signature verification
+- [x] Anchor program tests — all 13 instructions with happy path and error cases
 
-### In progress
-- [ ] Hosted Checkout app
-- [ ] Indexer service (Helius webhook + polling)
-- [ ] SDK package (@marlin/sdk)
-- [ ] Embeddable checkout widget
-- [ ] Auto-charger cron worker
-- [ ] E2E testing
+---
+
+## Testing
+
+```bash
+# Unit tests (shared packages + SDK)
+pnpm test
+
+# Anchor program tests (requires local Solana validator)
+anchor test
+
+# E2E tests (requires running app)
+pnpm e2e
+
+# Smoke test against deployed API
+pnpm tsx scripts/smoke-test.ts
+```
+
+### Test Coverage
+- **Anchor tests**: All 13 instructions — happy path + error cases (invalid amounts, unauthorized signers, period too short, insufficient authorization)
+- **Unit tests**: Amount parsing/formatting, PDA derivation, address validation, ULID encoding, mint helpers, error mapping, webhook signature verification
+- **E2E tests**: Landing page, dashboard auth guards, API endpoint auth, public endpoints, checkout pages
 
 ---
 
