@@ -24,6 +24,25 @@ export interface VerifyWebhookOptions {
  * 3. Compute expected HMAC: `HMAC-SHA256(secret, "<timestamp>.<payload>")`.
  * 4. Compare using timing-safe equality.
  * 5. Return the parsed event payload.
+ *
+ * @param opts - Verification options containing the payload, signature header, secret, and optional tolerance.
+ * @param opts.payload - The raw request body as a string (do not parse JSON before passing).
+ * @param opts.signature - The value of the `marlin-signature` HTTP header.
+ * @param opts.secret - Your webhook signing secret from the Marlin dashboard.
+ * @param opts.tolerance - Maximum allowed age of the event in seconds (default: 300).
+ * @returns The parsed {@link WebhookEvent} object if verification succeeds.
+ * @throws {@link MarlinWebhookVerificationError} if the signature is invalid, expired, or the payload cannot be parsed.
+ *
+ * @example
+ * ```ts
+ * import { verifyWebhook } from '@marlinfi/sdk'
+ *
+ * const event = verifyWebhook({
+ *   payload: req.body,
+ *   signature: req.headers['marlin-signature'],
+ *   secret: process.env.MARLIN_WEBHOOK_SECRET!,
+ * })
+ * ```
  */
 export function verifyWebhook(opts: VerifyWebhookOptions): WebhookEvent {
   const { payload, signature, secret, tolerance = 300 } = opts;
