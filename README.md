@@ -124,7 +124,7 @@ marlin/
 ├── packages/
 │   ├── shared/                # @marlin/shared — types, PDA derivation, amount utils
 │   ├── db/                    # @marlin/db — Prisma schema + client
-│   ├── ui/                    # @marlin/ui — shared UI utilities
+│   ├── ui/                    # @marlin/ui — Button, Badge, Card, Input, Skeleton + utilities
 │   ├── sdk/                   # @marlin/sdk — TypeScript SDK (server + React)
 │   └── checkout-widget/       # @marlin/checkout-widget — embeddable iframe widget
 ├── e2e/                       # Playwright E2E tests
@@ -266,6 +266,11 @@ pnpm dev
 - [x] Unit tests — shared packages (amount, PDA, validation, ULID, mints, errors)
 - [x] SDK tests — client instantiation, webhook signature verification
 - [x] Anchor program tests — all 13 instructions with happy path and error cases
+- [x] OpenAPI 3.0 spec — full API schema at `/openapi.json`
+- [x] Invoice email delivery — Resend integration with HTML template
+- [x] Shared UI component library (@marlin/ui) — Button, Badge, Card, Input, Select, Skeleton, Spinner, EmptyState, CopyButton
+- [x] Database seed script — correct Prisma field mapping, realistic test data
+- [x] Smoke test suite — 20+ endpoint checks (health, auth, protected, public, OpenAPI)
 
 ---
 
