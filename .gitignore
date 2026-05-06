@@ -13,3 +13,4 @@ fee-receiver.json
 .DS_Store
 coverage/
 .vercel
+.marlin-seed-checkpoint.json

@@ -1,0 +1,23 @@
+[toolchain]
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.devnet]
+marlin = "MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ"
+
+[programs.mainnet-beta]
+marlin = "MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.marlin/deployer.json"
+
+[scripts]
+test = "pnpm tsx tests/**/*.ts"
+seed = "pnpm tsx scripts/seed-devnet.ts"
+deploy-mints = "pnpm tsx scripts/deploy-devnet-mints.ts"
