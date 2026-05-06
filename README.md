@@ -1,15 +1,30 @@
 <div align="center">
 
-# 🎣 Marlin
+# Marlin
 
 **Stripe Billing for stablecoins on Solana.**
 
 Invoices · Subscriptions · Hosted Checkout · Embeddable Widget · REST API · SDK · Webhooks
 
-[![Built for Solana Frontier 2026](https://img.shields.io/badge/Solana%20Frontier-2026-9945FF?style=flat-square)](https://www.colosseum.org/)
+[![CI](https://github.com/wangyangmingsss/marlin/actions/workflows/ci.yml/badge.svg)](https://github.com/wangyangmingsss/marlin/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@marlinfi/sdk?style=flat-square&logo=npm)](https://www.npmjs.com/package/@marlinfi/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Built for Solana Frontier 2026](https://img.shields.io/badge/Solana%20Frontier-2026-9945FF?style=flat-square)](https://www.colosseum.org/)
 
 </div>
+
+---
+
+## Live on Solana devnet
+
+Marlin is deployed and operational on Solana devnet.
+
+| Property | Value |
+|----------|-------|
+| **Program ID** | `MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ` |
+| **Cluster** | devnet |
+| **Explorer** | [View on Solscan](https://solscan.io/account/MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ?cluster=devnet) |
+| **USDC devnet mint** | `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
 
 ---
 
@@ -35,22 +50,65 @@ The infrastructure of money has shipped on-chain. The infrastructure of *running
 ## Features
 
 ### For merchants
-- 📄 **Invoices** — create, send, track, refund. Stablecoin-native, hosted checkout included
-- 🔁 **Subscriptions** — true delegated recurring charges. Customer authorizes once, Marlin charges on schedule
-- 🛒 **Hosted Checkout** — beautiful pay-by-link page that works with any Solana wallet
-- 📊 **Dashboard** — real-time view of every payment, customer, and subscription
-- 🌍 **Multi-stablecoin** — USDC, PYUSD, USDG out of the box
-- 💸 **50 bps flat fee** — no monthly costs, no per-customer pricing tiers
+- **Invoices** — create, send, track, refund. Stablecoin-native, hosted checkout included
+- **Subscriptions** — true delegated recurring charges. Customer authorizes once, Marlin charges on schedule
+- **Hosted Checkout** — beautiful pay-by-link page that works with any Solana wallet
+- **Dashboard** — real-time view of every payment, customer, and subscription
+- **Multi-stablecoin** — USDC, PYUSD, USDG out of the box
+- **Confidential Invoices** — privacy-preserving invoices with encrypted details (see below)
+- **50 bps flat fee** — no monthly costs, no per-customer pricing tiers
 
 ### For developers
-- 🔧 **REST API** — the endpoints you'd expect from Stripe, mapped to stablecoin primitives
-- 📦 **TypeScript SDK** — `npm install @marlinfi/sdk`
-- 🪝 **Signed Webhooks** — HMAC-SHA256, with the same DX as Stripe's `Stripe-Signature` header
-- 🧩 **Embeddable Widget** — drop a `<MarlinCheckout />` component into any React app
-- 📚 **OpenAPI 3.0 spec** — generated client libraries, type-safe everywhere
+- **REST API** — the endpoints you'd expect from Stripe, mapped to stablecoin primitives
+- **TypeScript SDK** — `npm install @marlinfi/sdk`
+- **Signed Webhooks** — HMAC-SHA256, with the same DX as Stripe's `Stripe-Signature` header
+- **Embeddable Widget** — drop a `<MarlinCheckout />` component into any React app
+- **OpenAPI 3.0 spec** — generated client libraries, type-safe everywhere
 
 ### Non-custodial by design
 Funds settle directly to the merchant's wallet on-chain. Marlin never holds customer funds beyond a per-invoice escrow PDA controlled by the smart contract.
+
+---
+
+## SDK
+
+Install the TypeScript SDK:
+
+```bash
+npm install @marlinfi/sdk
+```
+
+Usage:
+
+```typescript
+import { MarlinClient } from '@marlinfi/sdk';
+
+const marlin = new MarlinClient({ apiKey: 'mk_live_...' });
+
+// Create an invoice
+const invoice = await marlin.invoices.create({
+  amount: 100_00, // $100.00 in minor units
+  mint: 'USDC',
+  customerEmail: 'customer@example.com',
+});
+```
+
+The SDK includes server-side client, webhook signature verification, and React components for embedding checkout flows.
+
+---
+
+## Confidential Invoices
+
+Marlin supports privacy-preserving invoices for merchants who need to keep billing details confidential while still settling on-chain.
+
+**How it works:**
+
+1. Invoice details (line items, amounts, customer info) are encrypted off-chain using the merchant's public key
+2. A commitment hash (`SHA-256(encrypted_payload)`) is stored on-chain in the Invoice PDA
+3. Only the merchant (or authorized parties with the decryption key) can view the full invoice details
+4. On-chain observers see the payment amount and commitment hash, but not the business context
+
+This enables use cases like B2B invoicing, payroll, and legal settlements where on-chain transparency of payment amounts is acceptable but disclosure of line-item details is not.
 
 ---
 
@@ -131,6 +189,17 @@ marlin/
 ├── scripts/                   # Seed data + smoke tests
 └── docs/                      # Internal architecture specs
 ```
+
+---
+
+## API documentation
+
+The REST API is fully documented via an OpenAPI 3.0 specification:
+
+- **OpenAPI spec:** `/api/openapi.json`
+- **Swagger UI:** `/api-docs`
+
+Use the OpenAPI spec to generate typed clients in any language or import directly into Postman/Insomnia.
 
 ---
 
@@ -242,38 +311,6 @@ pnpm dev
 
 ---
 
-## Progress
-
-### Completed
-- [x] Monorepo scaffold (pnpm + Turborepo)
-- [x] Anchor program — all 13 instructions with events and error handling
-- [x] On-chain state: Merchant, Invoice, SubscriptionPlan, Subscription PDAs
-- [x] Protocol fee logic (50 bps, split on payment)
-- [x] Mint allowlist (USDC, PYUSD, USDG — mainnet + devnet)
-- [x] Prisma schema — 12 models with indexes
-- [x] Shared packages — PDA derivation, BigInt amount utils, ULID generation, validation
-- [x] Dashboard app scaffold — Next.js 14, all pages and API routes
-- [x] Auth system (SIWS + JWT)
-- [x] Landing page
-- [x] All REST API routes
-- [x] Hosted Checkout app — invoice & subscription pay-by-link pages
-- [x] Indexer service — Helius webhook + polling fallback + event handlers
-- [x] SDK package (@marlinfi/sdk) — full client, resources, webhook verification, React integration
-- [x] Embeddable checkout widget — iframe + postMessage, React & vanilla JS
-- [x] Auto-charger cron worker — permissionless subscription charge processing
-- [x] Analytics dashboard — revenue charts, MRR, top customers, by-mint breakdown
-- [x] E2E tests (Playwright) — API, dashboard, checkout flows
-- [x] Unit tests — shared packages (amount, PDA, validation, ULID, mints, errors)
-- [x] SDK tests — client instantiation, webhook signature verification
-- [x] Anchor program tests — all 13 instructions with happy path and error cases
-- [x] OpenAPI 3.0 spec — full API schema at `/openapi.json`
-- [x] Invoice email delivery — Resend integration with HTML template
-- [x] Shared UI component library (@marlin/ui) — Button, Badge, Card, Input, Select, Skeleton, Spinner, EmptyState, CopyButton
-- [x] Database seed script — correct Prisma field mapping, realistic test data
-- [x] Smoke test suite — 20+ endpoint checks (health, auth, protected, public, OpenAPI)
-
----
-
 ## Testing
 
 ```bash
@@ -311,6 +348,12 @@ pnpm tsx scripts/smoke-test.ts
 ## License
 
 [MIT](./LICENSE)
+
+---
+
+## Disclaimer
+
+Marlin is live on Solana devnet. Mainnet deployment is pending a security audit. Do not use with real funds until mainnet launch is announced.
 
 ---
 
