@@ -33,6 +33,7 @@ export function generateOpenApiSpec() {
       { name: 'Webhooks', description: 'Webhook configuration and delivery' },
       { name: 'Public', description: 'No-auth payment endpoints for payers' },
       { name: 'API Keys', description: 'API key management' },
+      { name: 'Confidential Invoices', description: 'Privacy-preserving encrypted invoices' },
     ],
     paths: {
       // --- Health ---
@@ -174,20 +175,7 @@ export function generateOpenApiSpec() {
           },
         },
       },
-      // --- Subscriptions ---
-      '/api/subscriptions': {
-        get: {
-          tags: ['Subscriptions'],
-          summary: 'List subscriptions',
-          operationId: 'listSubscriptions',
-          security: [{ bearerAuth: [] }],
-          parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['Active', 'PastDue', 'Cancelled', 'Completed'] } }],
-          responses: {
-            '200': { description: 'List of subscriptions', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Subscription' } } } } },
-            '401': { $ref: '#/components/responses/Unauthorized' },
-          },
-        },
-      },
+      // --- Subscriptions --- (see full definition near end of paths with POST)
       '/api/subscriptions/{id}': {
         get: {
           tags: ['Subscriptions'],
@@ -452,6 +440,75 @@ export function generateOpenApiSpec() {
           },
         },
       },
+      // --- Confidential Invoices ---
+      '/api/confidential-invoices': {
+        get: {
+          tags: ['Confidential Invoices'],
+          summary: 'List confidential invoices',
+          operationId: 'listConfidentialInvoices',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': { description: 'List of confidential invoices', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/ConfidentialInvoice' } } } } },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+        post: {
+          tags: ['Confidential Invoices'],
+          summary: 'Create a confidential invoice',
+          operationId: 'createConfidentialInvoice',
+          security: [{ bearerAuth: [] }],
+          description: 'Creates a confidential (encrypted) invoice on-chain with a commitment hash and encrypted blob URL. Returns an unsigned Solana transaction.',
+          requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateConfidentialInvoiceBody' } } } },
+          responses: {
+            '201': { description: 'Confidential invoice created', content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateConfidentialInvoiceResponse' } } } },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+      },
+      // --- Webhooks (convenience alias) ---
+      '/api/webhooks': {
+        post: {
+          tags: ['Webhooks'],
+          summary: 'Register a webhook endpoint',
+          operationId: 'registerWebhook',
+          security: [{ bearerAuth: [] }],
+          description: 'Registers or updates the webhook URL for receiving event notifications. Equivalent to PUT /api/settings/webhook.',
+          requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/RegisterWebhookBody' } } } },
+          responses: {
+            '200': { description: 'Webhook registered', content: { 'application/json': { schema: { $ref: '#/components/schemas/WebhookConfig' } } } },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+      },
+      // --- Subscriptions POST ---
+      '/api/subscriptions': {
+        get: {
+          tags: ['Subscriptions'],
+          summary: 'List subscriptions',
+          operationId: 'listSubscriptions',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['Active', 'PastDue', 'Cancelled', 'Completed'] } }],
+          responses: {
+            '200': { description: 'List of subscriptions', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Subscription' } } } } },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+        post: {
+          tags: ['Subscriptions'],
+          summary: 'Create a subscription',
+          operationId: 'createSubscription',
+          security: [{ bearerAuth: [] }],
+          description: 'Creates a subscription for a customer to a plan. Returns subscription details and an unsigned Solana transaction.',
+          requestBody: { required: true, content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateSubscriptionBody' } } } },
+          responses: {
+            '201': { description: 'Subscription created', content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateSubscriptionResponse' } } } },
+            '400': { $ref: '#/components/responses/ValidationError' },
+            '401': { $ref: '#/components/responses/Unauthorized' },
+          },
+        },
+      },
     },
     components: {
       securitySchemes: {
@@ -700,6 +757,59 @@ export function generateOpenApiSpec() {
             unsignedTx: { type: 'string', description: 'Base64-encoded serialized Solana transaction' },
             blockhash: { type: 'string' },
             lastValidBlockHeight: { type: 'integer' },
+          },
+        },
+        ConfidentialInvoice: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            onchainId: { type: 'string' },
+            merchantId: { type: 'string' },
+            commitmentHash: { type: 'string', description: '64-character hex string (32-byte hash)' },
+            recipientPubkey: { type: 'string', description: 'Base64-encoded 32-byte recipient public key' },
+            encryptedBlobUrl: { type: 'string', description: 'URL to the encrypted invoice data blob (max 128 bytes)' },
+            status: { type: 'string', enum: ['Open', 'Paid', 'Void'] },
+            createdAt: { type: 'string', format: 'date-time' },
+            hostedCheckoutUrl: { type: 'string', format: 'uri' },
+          },
+        },
+        CreateConfidentialInvoiceBody: {
+          type: 'object',
+          required: ['commitmentHash', 'recipientPubkey', 'encryptedBlobUrl'],
+          properties: {
+            commitmentHash: { type: 'string', description: '64-character hex string representing the 32-byte commitment hash of the invoice details' },
+            recipientPubkey: { type: 'string', description: 'Base64-encoded 32-byte recipient public key for encryption' },
+            encryptedBlobUrl: { type: 'string', description: 'URL to the encrypted invoice blob (max 128 bytes when UTF-8 encoded)' },
+          },
+        },
+        CreateConfidentialInvoiceResponse: {
+          type: 'object',
+          properties: {
+            confidentialInvoice: { $ref: '#/components/schemas/ConfidentialInvoice' },
+            unsignedTx: { type: 'string', description: 'Base64-encoded unsigned Solana transaction' },
+            hostedCheckoutUrl: { type: 'string', format: 'uri' },
+          },
+        },
+        RegisterWebhookBody: {
+          type: 'object',
+          required: ['url'],
+          properties: {
+            url: { type: 'string', format: 'uri', description: 'HTTPS URL to receive webhook events' },
+          },
+        },
+        CreateSubscriptionBody: {
+          type: 'object',
+          required: ['planId', 'customerWallet'],
+          properties: {
+            planId: { type: 'string', description: 'ID of the plan to subscribe to' },
+            customerWallet: { type: 'string', description: 'Solana wallet address of the subscriber' },
+          },
+        },
+        CreateSubscriptionResponse: {
+          type: 'object',
+          properties: {
+            subscription: { $ref: '#/components/schemas/Subscription' },
+            unsignedTx: { type: 'string', description: 'Base64-encoded unsigned Solana transaction' },
           },
         },
       },

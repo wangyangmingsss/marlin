@@ -193,6 +193,20 @@
           "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubscriptionList" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
+      },
+      "post": {
+        "tags": ["Subscriptions"],
+        "summary": "Create subscription",
+        "description": "Creates a subscription for a customer to a plan (merchant-initiated).",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["planId", "customerWallet"], "properties": { "planId": { "type": "string" }, "customerWallet": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
       }
     },
     "/api/subscriptions/{id}/pause": {
@@ -432,6 +446,57 @@
         "security": [],
         "responses": {
           "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "example": "ok" } } } } } }
+        }
+      }
+    },
+    "/api/subscriptions/{id}": {
+      "get": {
+        "tags": ["Subscriptions"],
+        "summary": "Get subscription by ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Subscription" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api/webhooks": {
+      "post": {
+        "tags": ["Settings"],
+        "summary": "Register webhook endpoint",
+        "description": "Registers or updates the webhook URL for receiving event notifications.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["url"], "properties": { "url": { "type": "string", "format": "uri" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WebhookConfig" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/confidential-invoices": {
+      "get": {
+        "tags": ["Invoices"],
+        "summary": "List confidential invoices",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ConfidentialInvoice" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Invoices"],
+        "summary": "Create confidential invoice",
+        "description": "Creates a privacy-preserving encrypted invoice on-chain with a commitment hash.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateConfidentialInvoiceInput" } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConfidentialInvoiceResponse" } } } },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     }
@@ -733,6 +798,37 @@
           "type": { "type": "string", "enum": ["invoice.paid", "invoice.voided", "subscription.created", "subscription.charged", "subscription.failed", "subscription.status_changed"] },
           "data": { "type": "object" },
           "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ConfidentialInvoice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "onchainId": { "type": "string" },
+          "merchantId": { "type": "string" },
+          "commitmentHash": { "type": "string", "description": "64-character hex (32-byte hash)" },
+          "recipientPubkey": { "type": "string", "description": "Base64-encoded 32-byte public key" },
+          "encryptedBlobUrl": { "type": "string" },
+          "status": { "type": "string", "enum": ["Open", "Paid", "Void"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "hostedCheckoutUrl": { "type": "string", "format": "uri" }
+        }
+      },
+      "CreateConfidentialInvoiceInput": {
+        "type": "object",
+        "required": ["commitmentHash", "recipientPubkey", "encryptedBlobUrl"],
+        "properties": {
+          "commitmentHash": { "type": "string", "description": "64-character hex string" },
+          "recipientPubkey": { "type": "string", "description": "Base64-encoded 32-byte key" },
+          "encryptedBlobUrl": { "type": "string", "description": "URL to encrypted blob (max 128 bytes)" }
+        }
+      },
+      "ConfidentialInvoiceResponse": {
+        "type": "object",
+        "properties": {
+          "confidentialInvoice": { "$ref": "#/components/schemas/ConfidentialInvoice" },
+          "unsignedTx": { "type": "string", "description": "Base64-encoded unsigned Solana transaction" },
+          "hostedCheckoutUrl": { "type": "string", "format": "uri" }
         }
       }
     }
