@@ -63,7 +63,7 @@ export class Marlin {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "@marlin/sdk/1.0.0",
+      "User-Agent": "@marlinfi/sdk/1.0.0",
     };
 
     let lastError: Error | null = null;

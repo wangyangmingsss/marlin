@@ -44,7 +44,7 @@ The infrastructure of money has shipped on-chain. The infrastructure of *running
 
 ### For developers
 - 🔧 **REST API** — the endpoints you'd expect from Stripe, mapped to stablecoin primitives
-- 📦 **TypeScript SDK** — `npm install @marlin/sdk`
+- 📦 **TypeScript SDK** — `npm install @marlinfi/sdk`
 - 🪝 **Signed Webhooks** — HMAC-SHA256, with the same DX as Stripe's `Stripe-Signature` header
 - 🧩 **Embeddable Widget** — drop a `<MarlinCheckout />` component into any React app
 - 📚 **OpenAPI 3.0 spec** — generated client libraries, type-safe everywhere
@@ -125,7 +125,7 @@ marlin/
 │   ├── shared/                # @marlin/shared — types, PDA derivation, amount utils
 │   ├── db/                    # @marlin/db — Prisma schema + client
 │   ├── ui/                    # @marlin/ui — Button, Badge, Card, Input, Skeleton + utilities
-│   ├── sdk/                   # @marlin/sdk — TypeScript SDK (server + React)
+│   ├── sdk/                   # @marlinfi/sdk — TypeScript SDK (server + React)
 │   └── checkout-widget/       # @marlin/checkout-widget — embeddable iframe widget
 ├── e2e/                       # Playwright E2E tests
 ├── scripts/                   # Seed data + smoke tests
@@ -258,7 +258,7 @@ pnpm dev
 - [x] All REST API routes
 - [x] Hosted Checkout app — invoice & subscription pay-by-link pages
 - [x] Indexer service — Helius webhook + polling fallback + event handlers
-- [x] SDK package (@marlin/sdk) — full client, resources, webhook verification, React integration
+- [x] SDK package (@marlinfi/sdk) — full client, resources, webhook verification, React integration
 - [x] Embeddable checkout widget — iframe + postMessage, React & vanilla JS
 - [x] Auto-charger cron worker — permissionless subscription charge processing
 - [x] Analytics dashboard — revenue charts, MRR, top customers, by-mint breakdown

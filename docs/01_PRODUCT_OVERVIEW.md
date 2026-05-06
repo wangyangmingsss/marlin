@@ -12,7 +12,7 @@ Built for the Solana Frontier 2026 hackathon.
 2. **Hosted Checkout** — Standalone Next.js app providing pay-by-link pages for any Solana wallet.
 3. **Embeddable Widget** — Drop-in `<MarlinCheckout />` React component (iframe + JS SDK) for any website.
 4. **REST API** — Stripe-convention API endpoints for programmatic access to all billing primitives.
-5. **TypeScript SDK** — `@marlin/sdk` package for server-side and React integration.
+5. **TypeScript SDK** — `@marlinfi/sdk` package for server-side and React integration.
 
 ## Supported Stablecoins
 

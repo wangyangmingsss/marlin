@@ -1,5 +1,5 @@
 {
-  "name": "@marlin/checkout",
+  "name": "@marlin/checkout-widget",
   "version": "1.0.0",
   "description": "Embeddable checkout widget for Marlin stablecoin payments",
   "main": "dist/checkout.js",

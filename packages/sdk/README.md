@@ -1,13 +1,13 @@
-# @marlin/sdk
+# @marlinfi/sdk
 
 TypeScript SDK for **Marlin** — stablecoin billing on Solana.
 
 ## Install
 
 ```bash
-npm install @marlin/sdk
+npm install @marlinfi/sdk
 # or
-pnpm add @marlin/sdk
+pnpm add @marlinfi/sdk
 ```
 
 ## Quick Start
@@ -15,7 +15,7 @@ pnpm add @marlin/sdk
 ### Create an Invoice
 
 ```ts
-import { Marlin } from "@marlin/sdk";
+import { Marlin } from "@marlinfi/sdk";
 
 const marlin = new Marlin({ apiKey: process.env.MARLIN_API_KEY! });
 
@@ -49,7 +49,7 @@ if (page.nextCursor) {
 ### Verify a Webhook
 
 ```ts
-import { verifyWebhook } from "@marlin/sdk";
+import { verifyWebhook } from "@marlinfi/sdk";
 
 const event = verifyWebhook({
   payload: rawBody,
@@ -67,7 +67,7 @@ switch (event.type) {
 ### React Checkout
 
 ```tsx
-import { MarlinProvider, MarlinCheckoutButton } from "@marlin/sdk/react";
+import { MarlinProvider, MarlinCheckoutButton } from "@marlinfi/sdk/react";
 
 function App() {
   return (
@@ -103,7 +103,7 @@ function App() {
 ### Error Handling
 
 ```ts
-import { MarlinAPIError } from "@marlin/sdk";
+import { MarlinAPIError } from "@marlinfi/sdk";
 
 try {
   await marlin.invoices.retrieve("inv_nonexistent");

@@ -24,7 +24,7 @@ A drop-in component for any website. Two integration options:
 
 **React Component:**
 ```tsx
-import { MarlinCheckout } from '@marlin/sdk/react';
+import { MarlinCheckout } from '@marlinfi/sdk/react';
 
 <MarlinCheckout invoiceId="inv_abc123" onSuccess={handleSuccess} />
 ```

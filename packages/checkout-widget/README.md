@@ -1,21 +1,21 @@
-# @marlin/checkout
+# @marlin/checkout-widget
 
 Embeddable checkout widget for Marlin stablecoin payments. Drop it into any website to accept crypto payments via a secure hosted iframe.
 
 ## Installation
 
 ```bash
-npm install @marlin/checkout
+npm install @marlin/checkout-widget
 # or
-yarn add @marlin/checkout
+yarn add @marlin/checkout-widget
 # or
-pnpm add @marlin/checkout
+pnpm add @marlin/checkout-widget
 ```
 
 ### CDN (no build step)
 
 ```html
-<script src="https://unpkg.com/@marlin/checkout/dist/checkout.js"></script>
+<script src="https://unpkg.com/@marlin/checkout-widget/dist/checkout.js"></script>
 ```
 
 ---
@@ -27,7 +27,7 @@ pnpm add @marlin/checkout
 The simplest integration. Add `data-marlin-checkout` to any clickable element and the SDK auto-binds on page load.
 
 ```html
-<script src="https://unpkg.com/@marlin/checkout/dist/checkout.js"></script>
+<script src="https://unpkg.com/@marlin/checkout-widget/dist/checkout.js"></script>
 
 <!-- One-time payment -->
 <button data-marlin-checkout data-invoice-id="inv_abc123">
@@ -56,7 +56,7 @@ The simplest integration. Add `data-marlin-checkout` to any clickable element an
 For full control, import and call `MarlinCheckout.open()` directly.
 
 ```js
-import { MarlinCheckout } from '@marlin/checkout';
+import { MarlinCheckout } from '@marlin/checkout-widget';
 
 const handle = MarlinCheckout.open({
   invoiceId: 'inv_abc123',
@@ -93,7 +93,7 @@ const handle = MarlinCheckout.open({
 ### Pattern C: React Component
 
 ```tsx
-import { MarlinCheckoutButton } from '@marlin/checkout/react';
+import { MarlinCheckoutButton } from '@marlin/checkout-widget/react';
 
 function CheckoutPage() {
   return (
@@ -115,7 +115,7 @@ function CheckoutPage() {
 For custom UI, use the hook directly:
 
 ```tsx
-import { useMarlinCheckout } from '@marlin/checkout/react';
+import { useMarlinCheckout } from '@marlin/checkout-widget/react';
 
 function CustomButton({ invoiceId }: { invoiceId: string }) {
   const { open, loading } = useMarlinCheckout();

@@ -28,7 +28,7 @@
 - Outbound webhook delivery via BullMQ
 
 ### Day 5 — SDK + Widget + Cron
-- @marlin/sdk package (server-side + React)
+- @marlinfi/sdk package (server-side + React)
 - Embeddable checkout widget (iframe + postMessage)
 - Subscription auto-charger cron worker
 - Landing page polish

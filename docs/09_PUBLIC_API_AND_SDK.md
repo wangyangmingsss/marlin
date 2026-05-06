@@ -1,6 +1,6 @@
 # Public API and SDK
 
-## @marlin/sdk Package
+## @marlinfi/sdk Package
 
 Location: `packages/sdk/` (planned)
 
@@ -9,13 +9,13 @@ The TypeScript SDK provides a convenient wrapper around the Marlin REST API for 
 ## Installation
 
 ```bash
-npm install @marlin/sdk
+npm install @marlinfi/sdk
 ```
 
 ## Server-Side Usage
 
 ```typescript
-import { Marlin } from '@marlin/sdk';
+import { Marlin } from '@marlinfi/sdk';
 
 const marlin = new Marlin({ apiKey: 'mk_live_...' });
 
@@ -34,7 +34,7 @@ const subs = await marlin.subscriptions.list({ status: 'active' });
 ## React Integration
 
 ```tsx
-import { MarlinProvider, MarlinCheckout } from '@marlin/sdk/react';
+import { MarlinProvider, MarlinCheckout } from '@marlinfi/sdk/react';
 
 function App() {
   return (
