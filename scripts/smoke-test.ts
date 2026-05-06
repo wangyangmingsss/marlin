@@ -33,8 +33,36 @@ async function fetchJSON(path: string, options?: RequestInit) {
   return { status: res.status, body: await res.json().catch(() => null) }
 }
 
+const PROGRAM_ID = process.env.MARLIN_PROGRAM_ID || 'MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ'
+const SOLANA_RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com'
+
 async function run() {
   console.log(`\nSmoke testing: ${BASE_URL}\n`)
+
+  // ─── On-chain Program Verification ────────────────────────────────
+  console.log('On-chain:')
+  await check(`Program ${PROGRAM_ID} is deployed on devnet`, async () => {
+    const payload = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getAccountInfo',
+      params: [PROGRAM_ID, { encoding: 'base64' }],
+    }
+    const res = await fetch(SOLANA_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const json = await res.json() as any
+    if (!json.result?.value) {
+      throw new Error(`Account not found — program may not be deployed`)
+    }
+    if (!json.result.value.executable) {
+      throw new Error(`Account exists but is not executable (not a program)`)
+    }
+  })
+
+  console.log('')
 
   // ─── Health ────────────────────────────────────────────────────────
   console.log('Health:')
