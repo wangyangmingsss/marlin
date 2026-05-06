@@ -119,4 +119,27 @@ pub mod marlin {
     ) -> Result<()> {
         instructions::update_subscription_auth::handler(ctx, new_max_total_authorized)
     }
+
+    pub fn create_confidential_invoice(
+        ctx: Context<CreateConfidentialInvoice>,
+        invoice_id: [u8; 16],
+        commitment_hash: [u8; 32],
+        recipient_pubkey: [u8; 32],
+        encrypted_blob_url: Vec<u8>,
+    ) -> Result<()> {
+        instructions::create_confidential_invoice::handler(
+            ctx, invoice_id, commitment_hash, recipient_pubkey, encrypted_blob_url,
+        )
+    }
+
+    pub fn pay_confidential_invoice(
+        ctx: Context<PayConfidentialInvoice>,
+        revealed_amount: u64,
+        revealed_mint: Pubkey,
+        nonce: [u8; 32],
+    ) -> Result<()> {
+        instructions::pay_confidential_invoice::handler(
+            ctx, revealed_amount, revealed_mint, nonce,
+        )
+    }
 }

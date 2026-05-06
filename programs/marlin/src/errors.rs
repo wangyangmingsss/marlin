@@ -36,4 +36,16 @@ pub enum MarlinError {
     InsufficientAuthorization,
     #[msg("Token transfer CPI failed during charge")]
     ChargeFailed,
+    #[msg("Encrypted blob URL exceeds 128 bytes")]
+    EncryptedBlobUrlTooLong,
+    #[msg("Commitment hash cannot be all zeros")]
+    InvalidCommitmentHash,
+    #[msg("Recipient pubkey cannot be all zeros")]
+    InvalidRecipientPubkey,
+    #[msg("Revealed values do not match commitment hash")]
+    CommitmentMismatch,
+    #[msg("Merchant does not match invoice")]
+    MerchantMismatch,
+    #[msg("Math overflow")]
+    MathOverflow,
 }

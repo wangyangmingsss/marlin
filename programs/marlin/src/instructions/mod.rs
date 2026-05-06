@@ -11,6 +11,8 @@ pub mod pause_subscription;
 pub mod resume_subscription;
 pub mod cancel_subscription;
 pub mod update_subscription_auth;
+pub mod create_confidential_invoice;
+pub mod pay_confidential_invoice;
 
 pub use initialize_merchant::*;
 pub use update_merchant::*;
@@ -25,3 +27,5 @@ pub use pause_subscription::*;
 pub use resume_subscription::*;
 pub use cancel_subscription::*;
 pub use update_subscription_auth::*;
+pub use create_confidential_invoice::*;
+pub use pay_confidential_invoice::*;

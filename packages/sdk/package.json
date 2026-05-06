@@ -7,7 +7,8 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": { "import": "./dist/index.mjs", "require": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./react": { "import": "./dist/react/index.mjs", "require": "./dist/react/index.js", "types": "./dist/react/index.d.ts" }
+    "./react": { "import": "./dist/react/index.mjs", "require": "./dist/react/index.js", "types": "./dist/react/index.d.ts" },
+    "./confidential": { "import": "./dist/confidential/index.mjs", "require": "./dist/confidential/index.js", "types": "./dist/confidential/index.d.ts" }
   },
   "scripts": {
     "build": "tsup",
@@ -15,7 +16,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
+    "@noble/hashes": "^1.4.0",
+    "@solana/web3.js": "^1.91.0"
+  },
   "devDependencies": {
     "typescript": "^5.5.0",
     "tsup": "^8.1.0",

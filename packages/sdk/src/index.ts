@@ -2,6 +2,9 @@ export { Marlin } from "./client";
 export { verifyWebhook } from "./webhooks/verify";
 export { MarlinError, MarlinAPIError, MarlinWebhookVerificationError } from "./errors";
 
+// Confidential invoices - also available via '@marlin/sdk/confidential' subpath
+export * as confidential from "./confidential";
+
 export type {
   MarlinConfig,
   PaginatedList,
