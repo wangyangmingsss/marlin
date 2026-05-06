@@ -39,6 +39,31 @@ export function computeCommitment({ amount, mint, nonce }: CommitmentInput): Uin
 }
 
 /**
+ * Verifies that revealed invoice data matches an on-chain commitment hash.
+ * Used for selective disclosure: a customer can prove they paid a specific
+ * amount by revealing the cleartext values (amount, mint, nonce) and calling
+ * this function to check they produce the given commitment.
+ *
+ * @returns true if the revealed values match the commitment hash
+ */
+export function verifyCommitment(
+  input: CommitmentInput,
+  expectedHash: Uint8Array
+): boolean {
+  if (expectedHash.length !== 32) {
+    throw new Error(`Expected hash must be 32 bytes, got ${expectedHash.length}`)
+  }
+  const computed = computeCommitment(input)
+  // Constant-time comparison to prevent timing attacks
+  if (computed.length !== expectedHash.length) return false
+  let diff = 0
+  for (let i = 0; i < computed.length; i++) {
+    diff |= computed[i] ^ expectedHash[i]
+  }
+  return diff === 0
+}
+
+/**
  * Generate a cryptographically random 32-byte nonce for the commitment.
  */
 export function generateNonce(): Uint8Array {

@@ -1,4 +1,4 @@
-export { computeCommitment, generateNonce } from './commitment'
+export { computeCommitment, generateNonce, verifyCommitment } from './commitment'
 export type { CommitmentInput } from './commitment'
 
 export {

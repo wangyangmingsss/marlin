@@ -39,10 +39,11 @@ model Merchant {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  invoices          Invoice[]
-  subscriptionPlans SubscriptionPlan[]
-  apiKeys           ApiKey[]
-  customers         Customer[]
+  invoices               Invoice[]
+  confidentialInvoices   ConfidentialInvoice[]
+  subscriptionPlans      SubscriptionPlan[]
+  apiKeys                ApiKey[]
+  customers              Customer[]
 
   @@map("merchants")
 }
@@ -201,6 +202,43 @@ model AuthNonce {
   @@index([wallet])
   @@index([expiresAt])
   @@map("auth_nonces")
+}
+
+// ─── Confidential Invoices ──────────────────────────────────────────
+
+enum ConfidentialInvoiceStatus {
+  Open
+  Paid
+  Void
+}
+
+model ConfidentialInvoice {
+  id               String                    @id @default(cuid())
+  onchainId        String                    @unique @map("onchain_id")
+  merchantId       String                    @map("merchant_id")
+  commitmentHash   String                    @map("commitment_hash")
+  recipientPubkey  String                    @map("recipient_pubkey")
+  encryptedBlobUrl String                    @map("encrypted_blob_url")
+  status           ConfidentialInvoiceStatus @default(Open)
+  paidTxSignature  String?                   @map("paid_tx_signature")
+  paidAt           DateTime?                 @map("paid_at")
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId, status])
+  @@map("confidential_invoices")
+}
+
+model EncryptedBlob {
+  id         String   @id
+  merchantId String   @map("merchant_id")
+  payload    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([merchantId])
+  @@map("encrypted_blobs")
 }
 
 model IndexerCheckpoint {
