@@ -61,10 +61,14 @@ pub struct Subscription {
     pub status: u8,
     /// PDA bump seed.
     pub bump: u8,
+    /// Number of consecutive charge failures (resets on success).
+    pub consecutive_failures: u32,
+    /// Unix timestamp of the last failed charge attempt.
+    pub last_failure_at: i64,
     /// Reserved space for future upgrades.
-    pub _reserved: [u8; 64],
+    pub _reserved: [u8; 52],
 }
 
 impl Subscription {
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 8 + 8 + 4 + 8 + 8 + 1 + 1 + 64;
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 8 + 8 + 4 + 8 + 8 + 1 + 1 + 4 + 8 + 52;
 }

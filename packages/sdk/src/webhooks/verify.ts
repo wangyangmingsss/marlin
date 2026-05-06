@@ -29,15 +29,24 @@ export function verifyWebhook(opts: VerifyWebhookOptions): WebhookEvent {
   const { payload, signature, secret, tolerance = 300 } = opts;
 
   if (!payload) {
-    throw new MarlinWebhookVerificationError("Webhook payload is empty.");
+    throw new MarlinWebhookVerificationError(
+      "Webhook payload is empty.",
+      "invalid_payload",
+    );
   }
 
   if (!signature) {
-    throw new MarlinWebhookVerificationError("Webhook signature header is missing.");
+    throw new MarlinWebhookVerificationError(
+      "Webhook signature header is missing.",
+      "malformed_signature",
+    );
   }
 
   if (!secret) {
-    throw new MarlinWebhookVerificationError("Webhook secret is required.");
+    throw new MarlinWebhookVerificationError(
+      "Webhook secret is required.",
+      "malformed_signature",
+    );
   }
 
   // Parse signature header: t=<ts>,v1=<hmac>
@@ -48,6 +57,7 @@ export function verifyWebhook(opts: VerifyWebhookOptions): WebhookEvent {
   if (!timestampPart || !hmacPart) {
     throw new MarlinWebhookVerificationError(
       "Invalid signature header format. Expected `t=<timestamp>,v1=<hmac>`.",
+      "malformed_signature",
     );
   }
 
@@ -57,35 +67,50 @@ export function verifyWebhook(opts: VerifyWebhookOptions): WebhookEvent {
   if (isNaN(timestamp)) {
     throw new MarlinWebhookVerificationError(
       "Invalid timestamp in signature header.",
+      "malformed_signature",
     );
   }
 
-  // Check timestamp tolerance
+  // Check timestamp tolerance — separate past (expired) from future
   const now = Math.floor(Date.now() / 1000);
-  const age = Math.abs(now - timestamp);
+  const ageSeconds = now - timestamp;
 
-  if (age > tolerance) {
+  if (ageSeconds > tolerance) {
     throw new MarlinWebhookVerificationError(
-      `Webhook timestamp is too old. Event is ${age}s old, tolerance is ${tolerance}s.`,
+      `Webhook timestamp is too old. Event is ${ageSeconds}s old, tolerance is ${tolerance}s.`,
+      "expired_signature",
+    );
+  }
+
+  if (ageSeconds < -tolerance) {
+    throw new MarlinWebhookVerificationError(
+      `Webhook timestamp is in the future by ${Math.abs(ageSeconds)}s, tolerance is ${tolerance}s.`,
+      "future_signature",
     );
   }
 
   // Compute expected HMAC
   const signedContent = `${timestamp}.${payload}`;
-  const expectedHmac = createHmac("sha256", secret)
+  const expected = createHmac("sha256", secret)
     .update(signedContent)
-    .digest("hex");
+    .digest();
 
-  // Timing-safe comparison
-  const expectedBuffer = Buffer.from(expectedHmac, "utf8");
-  const receivedBuffer = Buffer.from(receivedHmac, "utf8");
+  // Decode provided signature from hex
+  const actual = Buffer.from(receivedHmac, "hex");
 
-  if (
-    expectedBuffer.length !== receivedBuffer.length ||
-    !timingSafeEqual(expectedBuffer, receivedBuffer)
-  ) {
+  // CRITICAL: timing-safe comparison
+  // Length check FIRST to avoid timingSafeEqual throwing on length mismatch
+  if (expected.length !== actual.length) {
     throw new MarlinWebhookVerificationError(
       "Webhook signature verification failed. The signature does not match the payload.",
+      "invalid_signature",
+    );
+  }
+
+  if (!timingSafeEqual(expected, actual)) {
+    throw new MarlinWebhookVerificationError(
+      "Webhook signature verification failed. The signature does not match the payload.",
+      "invalid_signature",
     );
   }
 
@@ -95,6 +120,7 @@ export function verifyWebhook(opts: VerifyWebhookOptions): WebhookEvent {
   } catch {
     throw new MarlinWebhookVerificationError(
       "Failed to parse webhook payload as JSON.",
+      "invalid_payload",
     );
   }
 }

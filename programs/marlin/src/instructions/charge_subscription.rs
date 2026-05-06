@@ -20,8 +20,12 @@ pub struct SubscriptionCharged {
 #[event]
 pub struct SubscriptionFailed {
     pub subscription: Pubkey,
+    pub plan: Pubkey,
+    pub customer: Pubkey,
+    pub consecutive_failures: u32,
+    pub attempted_amount: u64,
+    pub failed_at: i64,
     pub reason: u8,
-    pub timestamp: i64,
 }
 
 #[derive(Accounts)]
@@ -161,16 +165,26 @@ pub fn handler(ctx: Context<ChargeSubscription>) -> Result<()> {
     );
 
     if merchant_result.is_err() {
-        // Mark as failed
+        // Mark as failed — do NOT propagate error. The transaction must
+        // succeed so the state change commits and the cron can move on.
+        msg!("Charge failed: customer->merchant transfer error");
+
         let sub = &mut ctx.accounts.subscription;
         sub.status = SubscriptionStatus::Failed as u8;
+        sub.consecutive_failures = sub.consecutive_failures.saturating_add(1);
+        sub.last_failure_at = now;
 
         emit!(SubscriptionFailed {
             subscription: sub.key(),
-            reason: 1, // transfer failed
-            timestamp: now,
+            plan: plan.key(),
+            customer: sub.customer,
+            consecutive_failures: sub.consecutive_failures,
+            attempted_amount: amount,
+            failed_at: now,
+            reason: 1, // merchant transfer failed (e.g. insufficient funds, revoked delegate)
         });
 
+        // CRITICAL: return Ok(()) so the transaction succeeds and state commits.
         return Ok(());
     }
 
@@ -197,13 +211,23 @@ pub fn handler(ctx: Context<ChargeSubscription>) -> Result<()> {
         );
 
         if fee_result.is_err() {
+            // Fee transfer failed after merchant was already paid.
+            // Record failure but note: merchant DID receive funds.
+            msg!("Charge partial failure: merchant paid but protocol fee transfer failed");
+
             let sub = &mut ctx.accounts.subscription;
             sub.status = SubscriptionStatus::Failed as u8;
+            sub.consecutive_failures = sub.consecutive_failures.saturating_add(1);
+            sub.last_failure_at = now;
 
             emit!(SubscriptionFailed {
                 subscription: sub.key(),
-                reason: 2, // fee transfer failed
-                timestamp: now,
+                plan: plan.key(),
+                customer: sub.customer,
+                consecutive_failures: sub.consecutive_failures,
+                attempted_amount: amount,
+                failed_at: now,
+                reason: 2, // protocol fee transfer failed
             });
 
             return Ok(());
@@ -215,6 +239,7 @@ pub fn handler(ctx: Context<ChargeSubscription>) -> Result<()> {
     sub.next_charge_at = now + plan.period_seconds as i64;
     sub.charges_count = sub.charges_count.checked_add(1).unwrap();
     sub.total_charged = sub.total_charged.checked_add(amount).unwrap();
+    sub.consecutive_failures = 0; // Reset on successful charge
 
     // Update merchant volume
     let merchant = &mut ctx.accounts.merchant;

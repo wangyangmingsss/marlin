@@ -25,9 +25,19 @@ export class MarlinAPIError extends MarlinError {
   }
 }
 
+export type WebhookErrorCode =
+  | "malformed_signature"
+  | "expired_signature"
+  | "future_signature"
+  | "invalid_signature"
+  | "invalid_payload";
+
 export class MarlinWebhookVerificationError extends MarlinError {
-  constructor(message: string) {
+  public readonly code: WebhookErrorCode;
+
+  constructor(message: string, code: WebhookErrorCode = "invalid_signature") {
     super(message);
     this.name = "MarlinWebhookVerificationError";
+    this.code = code;
   }
 }

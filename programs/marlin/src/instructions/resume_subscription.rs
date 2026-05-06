@@ -52,6 +52,7 @@ pub fn handler(ctx: Context<ResumeSubscription>) -> Result<()> {
     let old_status = sub.status;
     sub.status = SubscriptionStatus::Active as u8;
     sub.next_charge_at = now;
+    sub.consecutive_failures = 0;
 
     emit!(SubscriptionStatusChanged {
         subscription: sub.key(),

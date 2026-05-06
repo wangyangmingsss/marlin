@@ -76,7 +76,9 @@ pub fn handler(ctx: Context<Subscribe>, max_total_authorized: u64) -> Result<()>
     sub.max_total_authorized = max_total_authorized;
     sub.status = SubscriptionStatus::Active as u8;
     sub.bump = ctx.bumps.subscription;
-    sub._reserved = [0u8; 64];
+    sub.consecutive_failures = 0;
+    sub.last_failure_at = 0;
+    sub._reserved = [0u8; 52];
 
     // CPI: approve subscription PDA as delegate on customer token account
     let delegate = sub.key();
