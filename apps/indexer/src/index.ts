@@ -1,4 +1,5 @@
 import express from "express";
+import { timingSafeEqual } from "node:crypto";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 import { parseEventsFromLogs } from "./event-parser.js";
@@ -25,9 +26,14 @@ app.get("/healthz", (_req, res) => {
 app.post("/webhooks/helius", async (req, res) => {
   const log = logger.child({ route: "webhooks/helius" });
 
-  // Verify authorization header
+  // Verify authorization header using timing-safe comparison to prevent timing attacks
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${config.HELIUS_WEBHOOK_SECRET}`) {
+  const expectedAuth = `Bearer ${config.HELIUS_WEBHOOK_SECRET}`;
+  if (
+    !authHeader ||
+    authHeader.length !== expectedAuth.length ||
+    !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expectedAuth))
+  ) {
     log.warn("Unauthorized webhook request");
     res.status(401).json({ error: "Unauthorized" });
     return;
