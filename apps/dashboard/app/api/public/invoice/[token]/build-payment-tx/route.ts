@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { buildPaymentTxSchema } from '@/lib/schemas'
 import { getConnection, getProgramId, getCluster } from '@/lib/solana'
 import {
-  createApiError,
   getMints,
   hexToBytes,
   deriveMerchantPda,
   deriveInvoicePda,
 } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 
@@ -20,7 +20,7 @@ export async function POST(
     const body = await request.json()
     const parsed = buildPaymentTxSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const invoice = await prisma.invoice.findUnique({
@@ -29,11 +29,11 @@ export async function POST(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
     if (invoice.status !== 'Open') {
-      return NextResponse.json(createApiError('INVOICE_NOT_OPEN'), { status: 400 })
+      return apiError('INVOICE_NOT_OPEN', 'Invoice is not in Open status', 400)
     }
 
     const { payerWallet } = parsed.data
@@ -75,9 +75,9 @@ export async function POST(
 
     const unsignedTx = tx.serialize({ requireAllSignatures: false }).toString('base64')
 
-    return NextResponse.json({ unsignedTx })
+    return apiSuccess({ unsignedTx })
   } catch (err) {
     console.error('Build payment tx error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

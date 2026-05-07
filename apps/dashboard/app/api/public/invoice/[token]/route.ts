@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
-import { createApiError, formatBigIntAmount } from '@marlin/shared'
+import { formatBigIntAmount } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(
   request: NextRequest,
@@ -16,7 +17,7 @@ export async function GET(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
     // Record view
@@ -28,7 +29,7 @@ export async function GET(
       },
     }).catch(() => {}) // non-critical
 
-    return NextResponse.json({
+    return apiSuccess({
       onchainId: invoice.onchainId,
       merchant: invoice.merchant,
       amount: invoice.amount.toString(),
@@ -41,6 +42,6 @@ export async function GET(
     })
   } catch (err) {
     console.error('Public invoice error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

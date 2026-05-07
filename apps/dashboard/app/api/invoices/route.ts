@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
 import { createInvoiceSchema } from '@/lib/schemas'
+import { apiSuccess, apiList, apiError, parsePagination } from '@/lib/api-response'
 import { getConnection, getProgramId, getCluster } from '@/lib/solana'
 import {
-  createApiError,
   parseDecimalToBigInt,
   getMints,
   MINT_DECIMALS,
@@ -21,12 +21,13 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const { searchParams } = request.nextUrl
     const status = searchParams.get('status')
     const search = searchParams.get('search')
+    const { limit, cursor } = parsePagination(searchParams)
 
     const where: any = { merchantId: session.merchantId }
     if (status) where.status = status
@@ -38,6 +39,9 @@ export async function GET(request: NextRequest) {
         { customer: { walletAddress: { contains: search } } },
       ]
     }
+    if (cursor) {
+      where.id = { lt: cursor }
+    }
 
     const invoices = await prisma.invoice.findMany({
       where,
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
         customer: { select: { walletAddress: true, label: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limit + 1,
     })
 
     // Serialize BigInt
@@ -54,10 +58,10 @@ export async function GET(request: NextRequest) {
       amount: inv.amount.toString(),
     }))
 
-    return NextResponse.json(serialized)
+    return apiList(serialized, limit)
   } catch (err) {
     console.error('Invoices list error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -65,13 +69,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = createInvoiceSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const { customerWallet, customerEmail, customerLabel, mint, lineItems, taxBps, memo, dueDate } = parsed.data
@@ -140,7 +144,6 @@ export async function POST(request: NextRequest) {
     const [invoicePda] = deriveInvoicePda(merchantPda, invoiceIdBytes, programId)
 
     // Build create_invoice instruction
-    // Encode: invoiceIdBytes(16) + amount(8 LE) + expiresAt(8 LE, 0 if none)
     const dataBuffer = Buffer.alloc(32)
     Buffer.from(invoiceIdBytes).copy(dataBuffer, 0)
     dataBuffer.writeBigUInt64LE(totalAmount, 16)
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
         { pubkey: mintPubkey, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       ],
-      data: Buffer.concat([Buffer.from([0]), dataBuffer]), // 0 = create_invoice discriminator
+      data: Buffer.concat([Buffer.from([0]), dataBuffer]),
     })
 
     const { blockhash } = await connection.getLatestBlockhash()
@@ -164,19 +167,18 @@ export async function POST(request: NextRequest) {
     tx.add(ix)
 
     const unsignedTx = tx.serialize({ requireAllSignatures: false }).toString('base64')
-    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/invoice/${onchainId}`
+    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'http://localhost:3001'}/i/${onchainId}`
 
-    return NextResponse.json({
+    return apiSuccess({
       invoice: {
         ...invoice,
         amount: invoice.amount.toString(),
-        hostedCheckoutUrl,
       },
       unsignedTx,
       hostedCheckoutUrl,
-    }, { status: 201 })
+    }, 201)
   } catch (err) {
     console.error('Invoice create error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

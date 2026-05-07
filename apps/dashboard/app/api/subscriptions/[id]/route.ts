@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(
   _request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const sub = await prisma.subscription.findFirst({
@@ -23,16 +23,16 @@ export async function GET(
     })
 
     if (!sub) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Subscription not found', 404)
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       ...sub,
       plan: { ...sub.plan, amount: sub.plan.amount.toString() },
       charges: sub.charges.map((c) => ({ ...c, amount: c.amount.toString() })),
     })
   } catch (err) {
     console.error('Subscription detail error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

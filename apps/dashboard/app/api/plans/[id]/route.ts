@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
 import { updatePlanSchema } from '@/lib/schemas'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(
   _request: NextRequest,
@@ -11,7 +11,7 @@ export async function GET(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const plan = await prisma.subscriptionPlan.findFirst({
@@ -25,12 +25,12 @@ export async function GET(
     })
 
     if (!plan) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan not found', 404)
     }
 
-    const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/plan/${plan.onchainId}`
+    const checkoutUrl = `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'http://localhost:3001'}/sub/${plan.onchainId}`
 
-    return NextResponse.json({
+    return apiSuccess({
       ...plan,
       amount: plan.amount.toString(),
       subscriptions: plan.subscriptions.map((s) => ({ ...s })),
@@ -38,7 +38,7 @@ export async function GET(
     })
   } catch (err) {
     console.error('Plan detail error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -49,13 +49,13 @@ export async function PATCH(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = updatePlanSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const plan = await prisma.subscriptionPlan.findFirst({
@@ -63,7 +63,7 @@ export async function PATCH(
     })
 
     if (!plan) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan not found', 404)
     }
 
     const updated = await prisma.subscriptionPlan.update({
@@ -71,9 +71,9 @@ export async function PATCH(
       data: parsed.data,
     })
 
-    return NextResponse.json({ ...updated, amount: updated.amount.toString() })
+    return apiSuccess({ ...updated, amount: updated.amount.toString() })
   } catch (err) {
     console.error('Plan update error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

@@ -1,18 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
 import { createCustomerSchema } from '@/lib/schemas'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiList, apiError, parsePagination } from '@/lib/api-response'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const { searchParams } = request.nextUrl
     const search = searchParams.get('search')
+    const { limit, cursor } = parsePagination(searchParams)
 
     const where: any = { merchantId: session.merchantId }
     if (search) {
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest) {
         { email: { contains: search, mode: 'insensitive' } },
       ]
     }
+    if (cursor) {
+      where.id = { lt: cursor }
+    }
 
     const customers = await prisma.customer.findMany({
       where,
@@ -29,13 +33,13 @@ export async function GET(request: NextRequest) {
         _count: { select: { invoices: true, subscriptions: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limit + 1,
     })
 
-    return NextResponse.json(customers)
+    return apiList(customers, limit)
   } catch (err) {
     console.error('Customers list error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -43,13 +47,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = createCustomerSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const customer = await prisma.customer.upsert({
@@ -69,9 +73,9 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(customer, { status: 201 })
+    return apiSuccess(customer, 201)
   } catch (err) {
     console.error('Customer create error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

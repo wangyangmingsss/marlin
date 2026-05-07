@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function POST(
   _request: NextRequest,
@@ -10,7 +10,7 @@ export async function POST(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const sub = await prisma.subscription.findFirst({
@@ -18,24 +18,21 @@ export async function POST(
     })
 
     if (!sub) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Subscription not found', 404)
     }
 
     if (sub.status !== 'Active') {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { reason: 'Subscription is not active' }),
-        { status: 400 },
-      )
+      return apiError('VALIDATION_ERROR', 'Subscription is not active', 400)
     }
 
     const updated = await prisma.subscription.update({
       where: { id: params.id },
-      data: { status: 'PastDue' }, // PastDue acts as paused state
+      data: { status: 'Paused' },
     })
 
-    return NextResponse.json(updated)
+    return apiSuccess(updated)
   } catch (err) {
     console.error('Subscription pause error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

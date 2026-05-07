@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { randomBytes } from 'crypto'
 import { nonceQuerySchema } from '@/lib/schemas'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl
     const parsed = nonceQuerySchema.safeParse({ address: searchParams.get('address') })
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid address parameter', 400, { issues: parsed.error.issues })
     }
 
     const { address } = parsed.data
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
       `Expiration Time: ${expiresAt.toISOString()}`,
     ].join('\n')
 
-    return NextResponse.json({ nonce, message })
+    return apiSuccess({ nonce, message })
   } catch (err) {
     console.error('Nonce error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function POST(
   _request: NextRequest,
@@ -10,7 +10,7 @@ export async function POST(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const invoice = await prisma.invoice.findFirst({
@@ -18,21 +18,21 @@ export async function POST(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
     if (invoice.status !== 'Open') {
-      return NextResponse.json(createApiError('INVOICE_NOT_OPEN'), { status: 400 })
+      return apiError('INVOICE_NOT_OPEN', 'Invoice is not in Open status', 400)
     }
 
     const updated = await prisma.invoice.update({
       where: { id: params.id },
-      data: { status: 'Cancelled' },
+      data: { status: 'Void' },
     })
 
-    return NextResponse.json({ ...updated, amount: updated.amount.toString() })
+    return apiSuccess({ ...updated, amount: updated.amount.toString() })
   } catch (err) {
     console.error('Invoice void error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

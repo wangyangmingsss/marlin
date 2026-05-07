@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
 import { createApiKeySchema } from '@/lib/schemas'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 import { randomBytes, createHash } from 'crypto'
 
 export async function GET() {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const keys = await prisma.apiKey.findMany({
@@ -24,7 +24,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     })
 
-    return NextResponse.json(
+    return apiSuccess(
       keys.map((k) => ({
         id: k.id,
         label: k.label,
@@ -35,7 +35,7 @@ export async function GET() {
     )
   } catch (err) {
     console.error('API keys list error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = createApiKeySchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     // Generate API key
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
     })
 
     // Return the raw key - it will not be shown again
-    return NextResponse.json({ key: rawKey }, { status: 201 })
+    return apiSuccess({ key: rawKey }, 201)
   } catch (err) {
     console.error('API key create error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

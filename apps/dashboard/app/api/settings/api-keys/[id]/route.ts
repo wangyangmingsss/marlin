@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function DELETE(
   _request: NextRequest,
@@ -10,7 +10,7 @@ export async function DELETE(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const key = await prisma.apiKey.findFirst({
@@ -18,7 +18,7 @@ export async function DELETE(
     })
 
     if (!key) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'API key not found', 404)
     }
 
     await prisma.apiKey.update({
@@ -26,9 +26,9 @@ export async function DELETE(
       data: { revokedAt: new Date() },
     })
 
-    return NextResponse.json({ success: true })
+    return apiSuccess({ deleted: true })
   } catch (err) {
     console.error('API key revoke error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

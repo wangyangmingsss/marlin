@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
 import { createPlanSchema } from '@/lib/schemas'
+import { apiSuccess, apiList, apiError, parsePagination } from '@/lib/api-response'
 import { getConnection, getProgramId, getCluster } from '@/lib/solana'
 import {
-  createApiError,
   parseDecimalToBigInt,
   getMints,
   MINT_DECIMALS,
@@ -20,19 +20,29 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
+    }
+
+    const { searchParams } = request.nextUrl
+    const { limit, cursor } = parsePagination(searchParams)
+
+    const where: any = { merchantId: session.merchantId }
+    if (cursor) {
+      where.id = { lt: cursor }
     }
 
     const plans = await prisma.subscriptionPlan.findMany({
-      where: { merchantId: session.merchantId },
+      where,
       include: { _count: { select: { subscriptions: true } } },
       orderBy: { createdAt: 'desc' },
+      take: limit + 1,
     })
 
-    return NextResponse.json(plans.map((p) => ({ ...p, amount: p.amount.toString() })))
+    const serialized = plans.map((p) => ({ ...p, amount: p.amount.toString() }))
+    return apiList(serialized, limit)
   } catch (err) {
     console.error('Plans list error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -40,13 +50,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = createPlanSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const { mint, amount: amountStr, intervalSeconds, label, description } = parsed.data
@@ -94,7 +104,7 @@ export async function POST(request: NextRequest) {
         { pubkey: mintPubkey, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       ],
-      data: Buffer.concat([Buffer.from([2]), dataBuffer, intervalBuf]), // 2 = create_plan
+      data: Buffer.concat([Buffer.from([2]), dataBuffer, intervalBuf]),
     })
 
     const { blockhash } = await connection.getLatestBlockhash()
@@ -102,12 +112,12 @@ export async function POST(request: NextRequest) {
     tx.add(ix)
     const unsignedTx = tx.serialize({ requireAllSignatures: false }).toString('base64')
 
-    return NextResponse.json({
+    return apiSuccess({
       plan: { ...plan, amount: plan.amount.toString() },
       unsignedTx,
-    }, { status: 201 })
+    }, 201)
   } catch (err) {
     console.error('Plan create error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

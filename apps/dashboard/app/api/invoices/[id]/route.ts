@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(
   _request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const invoice = await prisma.invoice.findFirst({
@@ -21,19 +21,19 @@ export async function GET(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
-    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/invoice/${invoice.onchainId}`
+    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'http://localhost:3001'}/i/${invoice.onchainId}`
 
-    return NextResponse.json({
+    return apiSuccess({
       ...invoice,
       amount: invoice.amount.toString(),
       hostedCheckoutUrl,
     })
   } catch (err) {
     console.error('Invoice detail error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -44,7 +44,7 @@ export async function PATCH(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
@@ -54,7 +54,7 @@ export async function PATCH(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
     const updated = await prisma.invoice.update({
@@ -62,9 +62,9 @@ export async function PATCH(
       data: { memo: body.memo },
     })
 
-    return NextResponse.json({ ...updated, amount: updated.amount.toString() })
+    return apiSuccess({ ...updated, amount: updated.amount.toString() })
   } catch (err) {
     console.error('Invoice update error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

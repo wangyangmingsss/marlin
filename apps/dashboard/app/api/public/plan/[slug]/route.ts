@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
-import { createApiError, formatBigIntAmount } from '@marlin/shared'
+import { formatBigIntAmount } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET(
   _request: NextRequest,
@@ -15,14 +16,14 @@ export async function GET(
     })
 
     if (!plan) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan not found', 404)
     }
 
     if (!plan.active) {
-      return NextResponse.json(createApiError('NOT_FOUND', { reason: 'Plan is no longer active' }), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan is no longer active', 404)
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       onchainId: plan.onchainId,
       merchant: plan.merchant,
       label: plan.label,
@@ -34,6 +35,6 @@ export async function GET(
     })
   } catch (err) {
     console.error('Public plan error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

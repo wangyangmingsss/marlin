@@ -1,13 +1,12 @@
-import { NextResponse } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET() {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const merchant = await prisma.merchant.findUnique({
@@ -22,12 +21,12 @@ export async function GET() {
     })
 
     if (!merchant) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Merchant not found', 404)
     }
 
-    return NextResponse.json(merchant)
+    return apiSuccess(merchant)
   } catch (err) {
     console.error('Me error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
