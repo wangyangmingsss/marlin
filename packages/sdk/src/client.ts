@@ -94,19 +94,32 @@ export class Marlin {
           if (response.status === 204) {
             return undefined as T;
           }
-          return (await response.json()) as T;
+          const json = await response.json();
+          // Stripe-style envelope handling:
+          // List responses: {data: [], has_more, cursor} → return as-is (PaginatedList)
+          // Single resource: {data: T} → unwrap to return T
+          if (json && typeof json === "object" && "data" in json) {
+            if ("has_more" in json) {
+              // Paginated list — return full envelope
+              return json as T;
+            }
+            // Single resource envelope — unwrap
+            return json.data as T;
+          }
+          return json as T;
         }
 
         const errorBody = await safeParseJSON(response);
 
         const apiError = new MarlinAPIError({
           message:
+            errorBody?.error?.message ??
             (errorBody?.message as string) ??
             (errorBody?.error as string) ??
             `API request failed with status ${response.status}`,
-          code: (errorBody?.code as string) ?? "api_error",
+          code: errorBody?.error?.code ?? (errorBody?.code as string) ?? "api_error",
           statusCode: response.status,
-          details: (errorBody?.details as Record<string, unknown>) ?? null,
+          details: errorBody?.error?.details ?? (errorBody?.details as Record<string, unknown>) ?? null,
         });
 
         if (RETRY_STATUS_CODES.has(response.status) && attempt < this.maxRetries) {

@@ -60,6 +60,8 @@ export function generateOpenApiSpec() {
           parameters: [
             { name: 'status', in: 'query', schema: { type: 'string', enum: ['Open', 'Paid', 'Void', 'Expired'] } },
             { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by onchain ID, memo, customer label, or wallet' },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 25 }, description: 'Number of items per page' },
+            { name: 'cursor', in: 'query', schema: { type: 'string' }, description: 'Pagination cursor (id of last item from previous page)' },
           ],
           responses: {
             '200': { description: 'List of invoices', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Invoice' } } } } },
@@ -489,7 +491,7 @@ export function generateOpenApiSpec() {
           summary: 'List subscriptions',
           operationId: 'listSubscriptions',
           security: [{ bearerAuth: [] }],
-          parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['Active', 'PastDue', 'Cancelled', 'Completed'] } }],
+          parameters: [{ name: 'status', in: 'query', schema: { type: 'string', enum: ['Active', 'Paused', 'Cancelled', 'Failed'] } }],
           responses: {
             '200': { description: 'List of subscriptions', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Subscription' } } } } },
             '401': { $ref: '#/components/responses/Unauthorized' },
@@ -538,6 +540,24 @@ export function generateOpenApiSpec() {
                 details: { type: 'object', additionalProperties: true, nullable: true },
               },
             },
+          },
+        },
+        DataEnvelope: {
+          type: 'object',
+          description: 'All successful responses wrap the result in a {data} envelope.',
+          required: ['data'],
+          properties: {
+            data: { description: 'The response payload' },
+          },
+        },
+        PaginatedList: {
+          type: 'object',
+          description: 'All list endpoints use cursor-based pagination.',
+          required: ['data', 'has_more', 'cursor'],
+          properties: {
+            data: { type: 'array', items: {} },
+            has_more: { type: 'boolean', description: 'Whether there are more items after this page' },
+            cursor: { type: 'string', nullable: true, description: 'Cursor for the next page (id of last item)' },
           },
         },
         HealthResponse: {
@@ -644,7 +664,7 @@ export function generateOpenApiSpec() {
             id: { type: 'string' },
             planId: { type: 'string' },
             customerId: { type: 'string' },
-            status: { type: 'string', enum: ['Active', 'PastDue', 'Cancelled', 'Completed'] },
+            status: { type: 'string', enum: ['Active', 'Paused', 'Cancelled', 'Failed'] },
             currentPeriodStart: { type: 'string', format: 'date-time', nullable: true },
             currentPeriodEnd: { type: 'string', format: 'date-time', nullable: true },
             cancelledAt: { type: 'string', format: 'date-time', nullable: true },

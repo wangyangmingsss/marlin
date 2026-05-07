@@ -2,7 +2,8 @@
 
 export interface PaginatedList<T> {
   data: T[];
-  nextCursor: string | null;
+  has_more: boolean;
+  cursor: string | null;
 }
 
 export interface PaginationOptions {
