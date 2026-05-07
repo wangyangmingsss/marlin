@@ -1,0 +1,10 @@
+{
+  "pyusd": {
+    "mint": "6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b",
+    "solscan": "https://solscan.io/token/6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b?cluster=devnet"
+  },
+  "usdg": {
+    "mint": "Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm",
+    "solscan": "https://solscan.io/token/Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm?cluster=devnet"
+  }
+}

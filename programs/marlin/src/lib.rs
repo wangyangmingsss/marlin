@@ -7,7 +7,7 @@ pub mod state;
 use instructions::*;
 
 // Program ID placeholder - generate with `anchor keys list` and replace before deployment
-declare_id!("MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ");
+declare_id!("HXAnpNiguZiixfc3yTW5gQtHD9ZVXpQ8kRmoKeTi879L");
 
 /// Protocol fee: 50 basis points (0.5%)
 pub const PROTOCOL_FEE_BPS: u64 = 50;
@@ -17,7 +17,13 @@ pub const BPS_DENOMINATOR: u64 = 10_000;
 pub const MIN_PERIOD_SECONDS: u32 = 86_400;
 
 // Protocol fee receiver — the wallet that collects 0.5% fees on every payment
-pub const PROTOCOL_FEE_RECEIVER: Pubkey = anchor_lang::solana_program::pubkey!("HpwaQ1H2qqCs8a7ZEeq8s8Hm9qUvJnLvWTc6vXsbRFzT");
+// Ff4ewV5s2MqaxBHycsgRdHBy2EyC1vPLLWBW9M7HZVnr
+pub const PROTOCOL_FEE_RECEIVER: Pubkey = Pubkey::new_from_array([
+    0xd9, 0xc3, 0xd1, 0xc7, 0x63, 0x92, 0x70, 0x63,
+    0xab, 0x32, 0x0c, 0xcf, 0x5a, 0x03, 0x4d, 0xb5,
+    0x4c, 0x65, 0xe5, 0x39, 0x3d, 0x2a, 0xcb, 0xea,
+    0x9c, 0xc3, 0xab, 0xc4, 0x5c, 0xe5, 0xe0, 0x13,
+]);
 
 /// Returns true if the given mint is in the supported stablecoin allowlist.
 pub fn is_supported_mint(mint: &Pubkey) -> bool {
@@ -28,8 +34,10 @@ pub fn is_supported_mint(mint: &Pubkey) -> bool {
         "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH", // USDG
         // Devnet
         "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC devnet
-        "CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM", // PYUSD devnet
-        "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr", // USDG devnet
+        "CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM", // PYUSD devnet (old)
+        "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr", // USDG devnet (old)
+        "6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b", // Mock PYUSD devnet
+        "Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm", // Mock USDG devnet
     ];
     supported.iter().any(|s| mint.to_string() == *s)
 }

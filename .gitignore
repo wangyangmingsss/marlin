@@ -14,3 +14,8 @@ fee-receiver.json
 coverage/
 .vercel
 .marlin-seed-checkpoint.json
+.marlin-personas/
+.marlin-personas.json
+.marlin-seed-state.json
+.marlin-program-solscan.txt
+deployer.json

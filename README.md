@@ -17,14 +17,47 @@ Invoices · Subscriptions · Hosted Checkout · Embeddable Widget · REST API ·
 
 ## Live on Solana devnet
 
-Marlin is deployed and operational on Solana devnet.
+> **Status**: Live on devnet. Mainnet deployment pending security audit.
 
 | Property | Value |
 |----------|-------|
-| **Program ID** | `MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ` |
+| **Program ID** | `HXAnpNiguZiixfc3yTW5gQtHD9ZVXpQ8kRmoKeTi879L` |
 | **Cluster** | devnet |
-| **Explorer** | [View on Solscan](https://solscan.io/account/MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ?cluster=devnet) |
-| **USDC devnet mint** | `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
+| **Explorer** | [View on Solscan](https://solscan.io/account/HXAnpNiguZiixfc3yTW5gQtHD9ZVXpQ8kRmoKeTi879L?cluster=devnet) |
+| **Deploy tx** | [View on Solscan](https://solscan.io/tx/4M2njUkpiikrZ7JwMewBmBW2v299nHZNVfuqHN46Dw5VqKayXxfRqpadcHu1yJ1aM36mXmC7sCAaDM8bB4NTXtjb?cluster=devnet) |
+| **Mock PYUSD mint** | [`6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b`](https://solscan.io/token/6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b?cluster=devnet) |
+| **Mock USDG mint** | [`Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm`](https://solscan.io/token/Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm?cluster=devnet) |
+| **Deployer** | [`Ff4ewV5s2MqaxBHycsgRdHBy2EyC1vPLLWBW9M7HZVnr`](https://solscan.io/account/Ff4ewV5s2MqaxBHycsgRdHBy2EyC1vPLLWBW9M7HZVnr?cluster=devnet) |
+
+### Supported stablecoins
+
+| Token | Devnet Mint |
+|-------|-------------|
+| USDC (Circle) | `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` |
+| Mock PYUSD | `6Sixd38HFpnvYxuHzSCWcb6RxYDxHuaJHPvcfY1xi83b` |
+| Mock USDG | `Av4Ya9AJ3CPo7G8Vy8BKYDMqAdTKFfhEQvzKWEomgvMm` |
+
+### Build & deploy locally
+
+```bash
+# Install dependencies
+pnpm install
+
+# Build the Solana program
+cargo-build-sbf  # from programs/marlin/
+
+# Deploy to devnet
+solana program deploy target/deploy/marlin.so --program-id target/deploy/marlin-keypair.json
+
+# Deploy mock stablecoin mints
+tsx scripts/agent-deploy-mints.ts
+
+# Create persona wallets and fund them
+tsx scripts/agent-create-personas.ts
+
+# Run the seed script (creates merchants, invoices, payments)
+tsx scripts/agent-seed-devnet.ts
+```
 
 ---
 

@@ -5,19 +5,21 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-marlin = "MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ"
+marlin = "HXAnpNiguZiixfc3yTW5gQtHD9ZVXpQ8kRmoKeTi879L"
 
 [programs.mainnet-beta]
-marlin = "MRLNxMrRgKMFnHEuJPsWnbDzDRKdNHvisijd7Gg6MjZ"
+marlin = "HXAnpNiguZiixfc3yTW5gQtHD9ZVXpQ8kRmoKeTi879L"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "https://api.devnet.solana.com"
 wallet = "~/.marlin/deployer.json"
 
 [scripts]
 test = "pnpm tsx tests/**/*.ts"
-seed = "pnpm tsx scripts/seed-devnet.ts"
-deploy-mints = "pnpm tsx scripts/deploy-devnet-mints.ts"
+seed = "pnpm tsx scripts/agent-seed-devnet.ts"
+deploy-mints = "pnpm tsx scripts/agent-deploy-mints.ts"
+create-personas = "pnpm tsx scripts/agent-create-personas.ts"
+print-summary = "pnpm tsx scripts/agent-print-summary.ts"
