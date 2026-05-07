@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiList, apiError, parsePagination } from '@/lib/api-response'
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const sub = await prisma.subscription.findFirst({
@@ -18,30 +18,25 @@ export async function GET(
     })
 
     if (!sub) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Subscription not found', 404)
     }
 
-    const { searchParams } = new URL(request.url)
-    const limit = Math.min(Number(searchParams.get('limit') ?? 50), 100)
-    const cursor = searchParams.get('cursor')
+    const { searchParams } = request.nextUrl
+    const { limit, cursor } = parsePagination(searchParams)
+
+    const where: any = { subscriptionId: params.id }
+    if (cursor) where.id = { lt: cursor }
 
     const charges = await prisma.charge.findMany({
-      where: { subscriptionId: params.id },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     })
 
-    const hasMore = charges.length > limit
-    const data = hasMore ? charges.slice(0, limit) : charges
-    const nextCursor = hasMore ? data[data.length - 1].id : null
-
-    return NextResponse.json({
-      data: data.map((c) => ({ ...c, amount: c.amount.toString() })),
-      pagination: { nextCursor, hasMore },
-    })
+    const serialized = charges.map((c) => ({ ...c, amount: c.amount.toString() }))
+    return apiList(serialized, limit)
   } catch (err) {
     console.error('Subscription charges error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

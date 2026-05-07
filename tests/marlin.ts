@@ -281,6 +281,110 @@ describe('marlin', () => {
     })
   })
 
+  // ─── Instruction 4: Pay Invoice ─────────────────────────────────────
+
+  describe('pay_invoice', () => {
+    let payInvoicePda: PublicKey
+    const payInvoiceId = new Uint8Array(16).fill(5)
+
+    before(async () => {
+      ;[payInvoicePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('invoice'), merchantPda.toBuffer(), Buffer.from(payInvoiceId)],
+        program.programId,
+      )
+
+      // Create a fresh invoice for payment
+      await program.methods
+        .createInvoice(
+          Array.from(payInvoiceId),
+          customerWallet.publicKey,
+          new anchor.BN(10_000_000), // 10 USDC
+          mint,
+          new anchor.BN(0),
+          Array.from(new Uint8Array(32)),
+        )
+        .accounts({
+          authority: merchantAuthority.publicKey,
+          merchant: merchantPda,
+          invoice: payInvoicePda,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([merchantAuthority])
+        .rpc()
+
+      // Create merchant token account if not exists
+      merchantTokenAccount = await createAssociatedTokenAccount(
+        provider.connection,
+        merchantAuthority,
+        mint,
+        merchantAuthority.publicKey,
+      ).catch(() => {
+        // Already exists - get address
+        const { getAssociatedTokenAddressSync } = require('@solana/spl-token')
+        return getAssociatedTokenAddressSync(mint, merchantAuthority.publicKey)
+      })
+
+      // Create protocol fee token account
+      protocolFeeTokenAccount = await createAssociatedTokenAccount(
+        provider.connection,
+        merchantAuthority,
+        mint,
+        protocolFeeReceiver,
+      ).catch(() => {
+        const { getAssociatedTokenAddressSync } = require('@solana/spl-token')
+        return getAssociatedTokenAddressSync(mint, protocolFeeReceiver)
+      })
+    })
+
+    it('pays invoice and splits fee correctly', async () => {
+      const balanceBefore = await provider.connection.getTokenAccountBalance(customerTokenAccount)
+
+      await program.methods
+        .payInvoice()
+        .accounts({
+          payer: customerWallet.publicKey,
+          merchant: merchantPda,
+          invoice: payInvoicePda,
+          payerTokenAccount: customerTokenAccount,
+          merchantTokenAccount,
+          protocolFeeTokenAccount,
+          mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([customerWallet])
+        .rpc()
+
+      const invoiceAccount = await program.account.invoice.fetch(payInvoicePda)
+      expect(invoiceAccount.status).to.equal(1) // Paid
+
+      // Verify merchant received 99.5% (9_950_000) and protocol got 0.5% (50_000)
+      const merchantBal = await provider.connection.getTokenAccountBalance(merchantTokenAccount)
+      expect(parseInt(merchantBal.value.amount)).to.be.greaterThan(0)
+    })
+
+    it('rejects paying an already paid invoice', async () => {
+      try {
+        await program.methods
+          .payInvoice()
+          .accounts({
+            payer: customerWallet.publicKey,
+            merchant: merchantPda,
+            invoice: payInvoicePda,
+            payerTokenAccount: customerTokenAccount,
+            merchantTokenAccount,
+            protocolFeeTokenAccount,
+            mint,
+            tokenProgram: TOKEN_PROGRAM_ID,
+          })
+          .signers([customerWallet])
+          .rpc()
+        expect.fail('should have thrown')
+      } catch (err: any) {
+        expect(err.error.errorCode.code).to.equal('InvoiceNotOpen')
+      }
+    })
+  })
+
   // ─── Instruction 5: Void Invoice ───────────────────────────────────
 
   describe('void_invoice', () => {

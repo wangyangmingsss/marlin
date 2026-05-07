@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
 const sendInvoiceSchema = z.object({
@@ -15,13 +15,13 @@ export async function POST(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = sendInvoiceSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const invoice = await prisma.invoice.findFirst({
@@ -30,7 +30,7 @@ export async function POST(
     })
 
     if (!invoice) {
-      return NextResponse.json(createApiError('INVOICE_NOT_FOUND'), { status: 404 })
+      return apiError('INVOICE_NOT_FOUND', 'Invoice not found', 404)
     }
 
     const checkoutUrl = `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'https://checkout.marlin.fi'}/i/${invoice.onchainId}`
@@ -95,7 +95,7 @@ export async function POST(
       if (!response.ok) {
         const errorBody = await response.text()
         console.error(`[invoice:send] Resend API error: ${response.status} ${errorBody}`)
-        return NextResponse.json(createApiError('INTERNAL', { reason: 'Email delivery failed' }), { status: 500 })
+        return apiError('INTERNAL', 'Email delivery failed', 500)
       }
 
       const result = await response.json()
@@ -106,9 +106,9 @@ export async function POST(
       console.log(`[invoice:send] Checkout URL: ${checkoutUrl}`)
     }
 
-    return NextResponse.json({ success: true, sentTo: parsed.data.email })
+    return apiSuccess({ success: true, sentTo: parsed.data.email })
   } catch (err) {
     console.error('Invoice send error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

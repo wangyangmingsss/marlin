@@ -1,13 +1,12 @@
-import { NextResponse } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 export async function GET() {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const merchantId = session.merchantId
@@ -65,9 +64,9 @@ export async function GET() {
       return diff > 0n ? 1 : diff < 0n ? -1 : 0
     })
 
-    return NextResponse.json({ data: ranked.slice(0, 10) })
+    return apiSuccess(ranked.slice(0, 10))
   } catch (err) {
     console.error('Top customers error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

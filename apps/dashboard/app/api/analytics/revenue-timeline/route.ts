@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 
 const RANGE_MS: Record<string, number> = {
   '7d': 7 * 24 * 60 * 60 * 1000,
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const merchantId = session.merchantId
@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, amount]) => ({ date, amount: amount.toString() }))
 
-    return NextResponse.json({ data })
+    return apiSuccess(data)
   } catch (err) {
     console.error('Revenue timeline error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

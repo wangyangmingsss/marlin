@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { buildSubscribeTxSchema } from '@/lib/schemas'
 import { getConnection, getProgramId, getCluster } from '@/lib/solana'
 import {
-  createApiError,
   getMints,
   hexToBytes,
   deriveMerchantPda,
   derivePlanPda,
   deriveSubscriptionPda,
 } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 
@@ -21,7 +21,7 @@ export async function POST(
     const body = await request.json()
     const parsed = buildSubscribeTxSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }), { status: 400 })
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     const plan = await prisma.subscriptionPlan.findUnique({
@@ -30,11 +30,11 @@ export async function POST(
     })
 
     if (!plan) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan not found', 404)
     }
 
     if (!plan.active) {
-      return NextResponse.json(createApiError('NOT_FOUND', { reason: 'Plan is no longer active' }), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan is no longer active', 404)
     }
 
     const { customerWallet } = parsed.data
@@ -78,9 +78,9 @@ export async function POST(
 
     const unsignedTx = tx.serialize({ requireAllSignatures: false }).toString('base64')
 
-    return NextResponse.json({ unsignedTx })
+    return apiSuccess({ unsignedTx })
   } catch (err) {
     console.error('Build subscribe tx error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

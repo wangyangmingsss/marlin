@@ -1,27 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiList, apiError, parsePagination } from '@/lib/api-response'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
-    const { searchParams } = new URL(request.url)
-    const limit = Math.min(Number(searchParams.get('limit') ?? 50), 100)
+    const { searchParams } = request.nextUrl
+    const { limit, cursor } = parsePagination(searchParams)
+
+    const where: any = { merchantId: session.merchantId }
+    if (cursor) where.id = { lt: cursor }
 
     const deliveries = await prisma.webhookDelivery.findMany({
-      where: { merchantId: session.merchantId },
+      where,
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: limit + 1,
     })
 
-    return NextResponse.json({ data: deliveries })
+    return apiList(deliveries, limit)
   } catch (err) {
     console.error('Webhook deliveries error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

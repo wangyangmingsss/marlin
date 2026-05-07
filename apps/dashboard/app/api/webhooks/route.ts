@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiSuccess, apiError } from '@/lib/api-response'
 import { z } from 'zod'
 
 const registerWebhookSchema = z.object({
@@ -17,16 +17,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const parsed = registerWebhookSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { issues: parsed.error.issues }),
-        { status: 400 },
-      )
+      return apiError('VALIDATION_ERROR', 'Invalid request body', 400, { issues: parsed.error.issues })
     }
 
     await prisma.merchant.update({
@@ -34,9 +31,9 @@ export async function POST(request: NextRequest) {
       data: { webhookUrl: parsed.data.url },
     })
 
-    return NextResponse.json({ webhookUrl: parsed.data.url })
+    return apiSuccess({ webhookUrl: parsed.data.url })
   } catch (err) {
     console.error('Webhook register error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

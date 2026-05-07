@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { getConnection, getProgramId, getCluster } from '@/lib/solana'
+import { getConnection, getProgramId } from '@/lib/solana'
 import {
-  createApiError,
   ulidToBytes,
   bytesToHex,
   deriveMerchantPda,
 } from '@marlin/shared'
+import { apiSuccess, apiList, apiError, parsePagination } from '@/lib/api-response'
 import { PublicKey, Transaction, TransactionInstruction, SystemProgram } from '@solana/web3.js'
 import { ulid } from 'ulidx'
 
@@ -30,19 +30,25 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
+    const { searchParams } = request.nextUrl
+    const { limit, cursor } = parsePagination(searchParams)
+
+    const where: any = { merchantId: session.merchantId }
+    if (cursor) where.id = { lt: cursor }
+
     const invoices = await prisma.confidentialInvoice.findMany({
-      where: { merchantId: session.merchantId },
+      where,
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limit + 1,
     })
 
-    return NextResponse.json(invoices)
+    return apiList(invoices, limit)
   } catch (err) {
     console.error('Confidential invoices list error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }
 
@@ -50,34 +56,25 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const body = await request.json()
     const { commitmentHash, recipientPubkey, encryptedBlobUrl } = body
 
     if (!commitmentHash || !recipientPubkey || !encryptedBlobUrl) {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { message: 'commitmentHash, recipientPubkey, and encryptedBlobUrl are required' }),
-        { status: 400 }
-      )
+      return apiError('VALIDATION_ERROR', 'commitmentHash, recipientPubkey, and encryptedBlobUrl are required', 400)
     }
 
     // Validate commitment hash is 64 hex chars (32 bytes)
     if (!/^[0-9a-f]{64}$/i.test(commitmentHash)) {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { message: 'commitmentHash must be 64 hex characters' }),
-        { status: 400 }
-      )
+      return apiError('VALIDATION_ERROR', 'commitmentHash must be 64 hex characters', 400)
     }
 
     // Validate blob URL length (max 128 bytes on-chain)
     const blobUrlBytes = Buffer.from(encryptedBlobUrl, 'utf-8')
     if (blobUrlBytes.length > 128) {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { message: 'encryptedBlobUrl must be <= 128 bytes' }),
-        { status: 400 }
-      )
+      return apiError('VALIDATION_ERROR', 'encryptedBlobUrl must be <= 128 bytes', 400)
     }
 
     // Generate ULID for invoice ID
@@ -102,22 +99,17 @@ export async function POST(request: NextRequest) {
     const recipientPubkeyBytes = Buffer.from(recipientPubkey, 'base64')
 
     if (recipientPubkeyBytes.length !== 32) {
-      return NextResponse.json(
-        createApiError('VALIDATION_ERROR', { message: 'recipientPubkey must decode to 32 bytes' }),
-        { status: 400 }
-      )
+      return apiError('VALIDATION_ERROR', 'recipientPubkey must decode to 32 bytes', 400)
     }
 
     // Anchor instruction discriminator for create_confidential_invoice
-    // sha256("global:create_confidential_invoice")[0..8]
     const { createHash } = require('node:crypto')
     const discriminator = createHash('sha256')
       .update('global:create_confidential_invoice')
       .digest()
       .slice(0, 8)
 
-    // Encode instruction data:
-    // discriminator(8) + invoice_id(16) + commitment_hash(32) + recipient_pubkey(32) + blob_url_len(4 LE) + blob_url(var)
+    // Encode instruction data
     const blobUrlLen = Buffer.alloc(4)
     blobUrlLen.writeUInt32LE(blobUrlBytes.length, 0)
 
@@ -159,18 +151,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/public/confidential-invoice/${onchainId}`
+    const hostedCheckoutUrl = `${process.env.NEXT_PUBLIC_CHECKOUT_URL || 'http://localhost:3001'}/ci/${onchainId}`
 
-    return NextResponse.json({
+    return apiSuccess({
       confidentialInvoice: {
         ...confidentialInvoice,
         hostedCheckoutUrl,
       },
       unsignedTx,
       hostedCheckoutUrl,
-    }, { status: 201 })
+    }, 201)
   } catch (err) {
     console.error('Confidential invoice create error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@marlin/db'
 import { getCurrentMerchant } from '@/lib/auth'
-import { createApiError } from '@marlin/shared'
+import { apiList, apiError, parsePagination } from '@/lib/api-response'
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +10,7 @@ export async function GET(
   try {
     const session = await getCurrentMerchant()
     if (!session) {
-      return NextResponse.json(createApiError('UNAUTHORIZED'), { status: 401 })
+      return apiError('UNAUTHORIZED', 'Authentication required', 401)
     }
 
     const plan = await prisma.subscriptionPlan.findFirst({
@@ -18,19 +18,19 @@ export async function GET(
     })
 
     if (!plan) {
-      return NextResponse.json(createApiError('NOT_FOUND'), { status: 404 })
+      return apiError('NOT_FOUND', 'Plan not found', 404)
     }
 
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const status = searchParams.get('status')
-    const limit = Math.min(Number(searchParams.get('limit') ?? 50), 100)
-    const cursor = searchParams.get('cursor')
+    const { limit, cursor } = parsePagination(searchParams)
+
+    const where: any = { planId: params.id }
+    if (status) where.status = status
+    if (cursor) where.id = { lt: cursor }
 
     const subscriptions = await prisma.subscription.findMany({
-      where: {
-        planId: params.id,
-        ...(status ? { status: status as any } : {}),
-      },
+      where,
       include: {
         customer: {
           select: { id: true, walletAddress: true, email: true, label: true },
@@ -38,19 +38,11 @@ export async function GET(
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     })
 
-    const hasMore = subscriptions.length > limit
-    const data = hasMore ? subscriptions.slice(0, limit) : subscriptions
-    const nextCursor = hasMore ? data[data.length - 1].id : null
-
-    return NextResponse.json({
-      data,
-      pagination: { nextCursor, hasMore },
-    })
+    return apiList(subscriptions, limit)
   } catch (err) {
     console.error('Plan subscriptions error:', err)
-    return NextResponse.json(createApiError('INTERNAL'), { status: 500 })
+    return apiError('INTERNAL', 'Internal server error', 500)
   }
 }

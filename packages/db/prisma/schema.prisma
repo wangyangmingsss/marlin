@@ -12,15 +12,15 @@ datasource db {
 enum InvoiceStatus {
   Open
   Paid
+  Void
   Expired
-  Cancelled
 }
 
 enum SubscriptionStatus {
   Active
-  PastDue
+  Paused
   Cancelled
-  Completed
+  Failed
 }
 
 enum ChargeStatus {
