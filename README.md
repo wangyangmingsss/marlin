@@ -238,7 +238,7 @@ Use the OpenAPI spec to generate typed clients in any language or import directl
 
 ## Smart contract instructions
 
-The Anchor program implements 13 instructions covering the full billing lifecycle:
+The Anchor program implements 15 instructions covering the full billing lifecycle:
 
 | # | Instruction | Description |
 |---|---|---|
@@ -255,44 +255,72 @@ The Anchor program implements 13 instructions covering the full billing lifecycl
 | 11 | `resume_subscription` | Resume from paused/failed state |
 | 12 | `cancel_subscription` | Cancel + revoke delegate |
 | 13 | `update_subscription_authorization` | Customer increases spending cap |
+| 14 | `create_confidential_invoice` | Create privacy-preserving invoice with commitment hash |
+| 15 | `pay_confidential_invoice` | Pay confidential invoice with hash verification |
 
 ## API endpoints
 
+All responses follow Stripe conventions:
+- **Single resource**: `{ data: T }`
+- **List**: `{ data: T[], has_more: boolean, cursor: string | null }`
+- **Error**: `{ error: { code: string, message: string, details?: unknown } }`
+
+Pagination uses cursor-based approach with `?limit=25&cursor=<id>` query params.
+
 ### Auth
-- `GET /api/auth/nonce` — Get SIWS message to sign
+- `GET /api/auth/nonce?address=<wallet>` — Get SIWS message to sign
 - `POST /api/auth/login` — Verify signature, issue JWT
 - `POST /api/auth/logout` — Clear session
 - `GET /api/auth/me` — Current merchant
 
 ### Invoices
 - `POST /api/invoices` — Create invoice (returns unsigned tx)
-- `GET /api/invoices` — List with filters
+- `GET /api/invoices` — List with filters (`?status=Open&search=...&limit=25&cursor=...`)
 - `GET /api/invoices/:id` — Single invoice
 - `POST /api/invoices/:id/void` — Void invoice
+- `POST /api/invoices/:id/send` — Send invoice via email
 
 ### Subscription Plans
 - `POST /api/plans` — Create plan
 - `GET /api/plans` — List plans
 - `PATCH /api/plans/:id` — Update plan
+- `GET /api/plans/:id/subscriptions` — List plan subscribers
 
 ### Subscriptions
-- `GET /api/subscriptions` — List subscriptions
+- `GET /api/subscriptions` — List subscriptions (`?status=Active|Paused|Cancelled|Failed`)
+- `GET /api/subscriptions/:id` — Single subscription with charges
 - `POST /api/subscriptions/:id/pause` — Pause
 - `POST /api/subscriptions/:id/resume` — Resume
 - `POST /api/subscriptions/:id/cancel` — Cancel
+- `GET /api/subscriptions/:id/charges` — List charges
 
 ### Customers
 - `GET /api/customers` — List customers
 - `POST /api/customers` — Create customer
+- `GET /api/customers/:id` — Customer details with invoices & subscriptions
 - `PATCH /api/customers/:id` — Update customer
 
 ### Public (no auth)
 - `GET /api/public/invoice/:token` — Invoice details for checkout
 - `POST /api/public/invoice/:token/build-payment-tx` — Build payment transaction
 - `GET /api/public/plan/:slug` — Plan details for subscription
+- `POST /api/public/plan/:slug/build-subscribe-tx` — Build subscription transaction
+
+### Confidential Invoices
+- `GET /api/confidential-invoices` — List confidential invoices
+- `POST /api/confidential-invoices` — Create confidential invoice
+
+### Analytics
+- `GET /api/analytics/overview` — Dashboard stats (MRR, revenue, activity)
+- `GET /api/analytics/revenue-timeline` — Revenue by day
+- `GET /api/analytics/by-mint` — Revenue breakdown by stablecoin
+- `GET /api/analytics/top-customers` — Top customers by volume
 
 ### Settings
 - `GET/PUT /api/settings/webhook` — Webhook configuration
+- `POST /api/settings/webhook/rotate` — Rotate signing secret
+- `POST /api/settings/webhook/test` — Send test event
+- `GET /api/settings/webhook/deliveries` — Recent deliveries
 - `GET/POST/DELETE /api/settings/api-keys` — API key management
 
 ---
@@ -302,11 +330,12 @@ The Anchor program implements 13 instructions covering the full billing lifecycl
 ### On-chain (Solana PDAs)
 - **Merchant** — authority, merchant_id, display_name, settlement_mint, total_volume
 - **Invoice** — merchant, amount, mint, status (Open/Paid/Void/Expired), customer_wallet
+- **ConfidentialInvoice** — merchant, commitment_hash, recipient_pubkey, encrypted_blob_url, status
 - **SubscriptionPlan** — merchant, amount_per_period, mint, period_seconds, trial_seconds
-- **Subscription** — plan, customer, next_charge_at, charges_count, total_charged, max_authorized
+- **Subscription** — plan, customer, next_charge_at, charges_count, total_charged, max_authorized, status (Active/Paused/Canceled/Failed)
 
 ### Off-chain (PostgreSQL via Prisma)
-12 models: Merchant, Customer, Invoice, InvoiceView, SubscriptionPlan, Subscription, Charge, ApiKey, WebhookDelivery, AuthNonce, IndexerCheckpoint, ProcessedTx
+14 models: Merchant, Customer, Invoice, InvoiceView, SubscriptionPlan, Subscription, Charge, ApiKey, WebhookDelivery, AuthNonce, IndexerCheckpoint, ProcessedTx, ConfidentialInvoice, EncryptedBlob
 
 ---
 
