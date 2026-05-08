@@ -19,6 +19,10 @@ Invoices · Subscriptions · Hosted Checkout · Embeddable Widget · REST API ·
 
 ---
 
+Marlin is the financial operating system for businesses accepting stablecoin payments on Solana. It provides the full billing infrastructure that Stripe gives traditional businesses — invoices, subscriptions, customer records, reconciliation, webhooks, dashboards, and SDKs — but settled on-chain in stablecoins. Non-custodial by design: funds settle directly to the merchant's wallet. Built for the [Solana Frontier 2026](https://www.colosseum.org/) hackathon.
+
+---
+
 ## Live on Solana devnet
 
 > **Status**: Live on devnet. Mainnet deployment pending security audit.
