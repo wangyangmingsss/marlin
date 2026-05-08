@@ -17,7 +17,10 @@ export function getMints(cluster: string): Record<MintSymbol, string> {
 }
 
 export function symbolFromMint(mintAddress: string): MintSymbol | null {
-  for (const [sym, addr] of Object.entries({ ...MAINNET_MINTS, ...DEVNET_MINTS })) {
+  for (const [sym, addr] of Object.entries(MAINNET_MINTS)) {
+    if (addr === mintAddress) return sym as MintSymbol
+  }
+  for (const [sym, addr] of Object.entries(DEVNET_MINTS)) {
     if (addr === mintAddress) return sym as MintSymbol
   }
   return null

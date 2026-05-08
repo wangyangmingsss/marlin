@@ -35,7 +35,7 @@ describe('truncateAddress', () => {
 
   it('uses custom char count', () => {
     const addr = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-    expect(truncateAddress(addr, 6)).toBe('EPjFWd...TDt1v')
+    expect(truncateAddress(addr, 6)).toBe('EPjFWd...yTDt1v')
   })
 
   it('does not truncate short strings', () => {
