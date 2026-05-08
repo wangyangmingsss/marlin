@@ -6,6 +6,10 @@
 
 Invoices · Subscriptions · Hosted Checkout · Embeddable Widget · REST API · SDK · Webhooks
 
+[![Docs](https://img.shields.io/badge/Docs-mintlify-0D9373?style=flat-square&logo=gitbook&logoColor=white)](https://yanhgming.mintlify.app/)
+[![Demo](https://img.shields.io/badge/Live%20Demo-mule.page-3b82f6?style=flat-square&logo=vercel&logoColor=white)](https://mgu5ppc2.mule.page/)
+[![Twitter](https://img.shields.io/badge/Twitter-@0xWangyangming-1DA1F2?style=flat-square&logo=x&logoColor=white)](https://x.com/0xWangyangming)
+
 [![CI](https://github.com/wangyangmingsss/marlin/actions/workflows/ci.yml/badge.svg)](https://github.com/wangyangmingsss/marlin/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@marlinfi/sdk?style=flat-square&logo=npm)](https://www.npmjs.com/package/@marlinfi/sdk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
